@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>无线网络虚拟实验室 教师台</title>
+<link rel="stylesheet" href="/client/assets/app.css" />
+</head>
+<body data-route-role="__ROUTE_ROLE__" data-auto-connect="__AUTO_CONNECT__" data-default-room="__DEFAULT_ROOM__">
+<div class="shell">
+<header class="top">
+  <div><strong>无线网络虚拟实验室 教师台</strong><div class="small" style="color:#d2deef">课堂控制 | 全班同步 | 汇总结果</div></div>
+  <div class="toolbar">
+    <button class="tool" id="connectBtn">连接服务器</button>
+    <button class="tool" id="pushBtn">推送全班同步</button>
+    <button class="tool" id="exportBoardBtn">导出汇总CSV</button>
+    <button class="tool" id="themeBtn">切换深色</button>
+  </div>
+</header>
+<div class="main">
+  <aside class="panel pad">
+    <div class="ttl">联机设置</div>
+    <div class="field"><label>服务器地址</label><input id="serverUrl"></div>
+    <div class="field"><label>教室代号</label><input id="roomCode" value="classroom-101"></div>
+    <input id="role" value="teacher" hidden>
+    <div class="field"><label>客户端ID</label><input id="clientId"></div>
+    <div class="res" id="connState">未连接服务器。</div>
+    <div class="ttl" style="margin-top:14px">设备</div>
+    <div id="deviceList"></div>
+  </aside>
+  <section>
+    <div class="panel pad" style="margin-bottom:10px"><div class="actions"><button class="btn mode active" data-mode="select">选择</button><button class="btn mode" data-mode="connect">连接</button><button class="btn" id="saveLayoutBtn">导出布局JSON</button><button class="btn" id="loadLayoutBtn">导入布局JSON</button><input type="file" id="layoutFile" accept="application/json" hidden></div></div>
+    <div class="workspaceWrap"><div class="workspace" id="workspace"><div class="grid"></div><svg id="svg"></svg></div></div>
+  </section>
+  <aside class="panel pad">
+    <div class="tabs"><button class="tab active" data-pane="teacher">教师控制</button><button class="tab" data-pane="board">班级汇总</button></div>
+    <div class="pane active" id="pane-teacher">
+      <div class="field"><label>课堂模式</label><select id="lessonMode"><option value="demo">教师演示</option><option value="group">学生分组</option><option value="assessment">课堂测评</option></select></div>
+      <div class="field"><label>故障注入</label><select id="faultInject"><option value="none">不注入</option><option value="wan">WAN错误</option><option value="dhcp">DHCP错误</option><option value="secure">安全风险</option></select></div>
+      <div class="field"><label>教师备注</label><textarea id="teacherNote" rows="4"></textarea></div>
+      <div class="actions"><button class="btn primary" id="applyTeacherBtn">应用设置</button><button class="btn secret-trigger" id="demoBtn" hidden>一键演示</button></div>
+      <div class="res" id="teacherResult">等待教师操作。</div>
+    </div>
+    <div class="pane" id="pane-board">
+      <div class="res" id="boardSummary">当前显示教师台已汇总的小组结果。</div>
+      <table class="table"><thead><tr><th>班级</th><th>小组</th><th>姓名</th><th>分数</th><th>测试</th></tr></thead><tbody id="boardBody"></tbody></table>
+    </div>
+  </aside>
+</div>
+<footer class="bottom">
+  <div class="status"><div>系统日志</div><div class="log" id="log">[init] 教师台已加载。</div></div>
+  <div class="status"><div>联机状态</div><div class="log" id="netState">room=未连接</div></div>
+  <div class="status">
+    <div>当前连线提示</div>
+    <div class="noticeCard notice-info" id="linkNoticeCard" aria-live="polite">
+      <div class="noticeHead">
+        <div class="noticeIcon" id="linkNoticeIcon">i</div>
+        <div>
+          <div class="noticeTitle" id="linkNoticeTitle">等待操作</div>
+          <div class="noticeText" id="linkNoticeText">等待选择端口或连线。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="status"><div>评分</div><div class="score" id="score">0 / 100</div></div>
+</footer>
+</div>
+<script src="/client/assets/link-utils.js"></script>
+<script src="/client/assets/lab-data.js"></script>
+<script src="/client/assets/teacher-app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+cd /home/wireless_lab_realtime_windows_package
+nohup ./start_server.sh > wireless_lab.log 2>&1 & echo $!
+这会返回一个 PID。查看是否还在跑：
+
+bash
+
+ps -ef | grep run_server.py
+tail -f /home/wireless_lab_realtime_windows_package/wireless_lab.log
+停止有两种常用方式。按进程名停：
+
+bash
+
+pkill -f run_server.py

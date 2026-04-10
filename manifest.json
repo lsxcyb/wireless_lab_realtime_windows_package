@@ -1,0 +1,26 @@
+{
+  "root": "output/wireless_lab_realtime_windows_package",
+  "files": [
+    "wireless_lab_realtime_windows_package/README_WINDOWS.md",
+    "wireless_lab_realtime_windows_package/client/home.html",
+    "wireless_lab_realtime_windows_package/client/index.html",
+    "wireless_lab_realtime_windows_package/client/teacher.html",
+    "wireless_lab_realtime_windows_package/client/assets/app.css",
+    "wireless_lab_realtime_windows_package/client/assets/link-utils.js",
+    "wireless_lab_realtime_windows_package/client/assets/lab-data.js",
+    "wireless_lab_realtime_windows_package/client/assets/student-app.js",
+    "wireless_lab_realtime_windows_package/client/assets/teacher-app.js",
+    "wireless_lab_realtime_windows_package/client/assets/devices/modem.svg",
+    "wireless_lab_realtime_windows_package/client/assets/devices/pc.svg",
+    "wireless_lab_realtime_windows_package/client/assets/devices/router.svg",
+    "wireless_lab_realtime_windows_package/client/assets/devices/splitter.svg",
+    "wireless_lab_realtime_windows_package/client/assets/devices/tablet.svg",
+    "wireless_lab_realtime_windows_package/requirements.txt",
+    "wireless_lab_realtime_windows_package/run_server.py",
+    "wireless_lab_realtime_windows_package/server/app.py",
+    "wireless_lab_realtime_windows_package/start_server.bat",
+    "wireless_lab_realtime_windows_package/start_server_noinstall.bat",
+    "wireless_lab_realtime_windows_package/start_server.sh"
+  ],
+  "zip": "wireless_lab_realtime_windows_package.zip"
+}

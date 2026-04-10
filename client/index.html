@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>无线网络虚拟实验室 学生端</title>
+<link rel="stylesheet" href="/client/assets/app.css?v=20260410c" />
+</head>
+<body data-route-role="__ROUTE_ROLE__" data-auto-connect="__AUTO_CONNECT__" data-default-room="__DEFAULT_ROOM__">
+<div class="shell">
+<header class="top">
+  <div><strong>无线网络虚拟实验室 学生端</strong><div class="small" style="color:#d2deef">拓扑连线 | 参数配置 | 网络测试</div></div>
+  <div class="toolbar">
+    <button class="tool" id="connectBtn">连接服务器</button>
+    <button class="tool" id="submitResultBtn">提交当前结果</button>
+    <button class="tool" id="themeBtn">切换深色</button>
+  </div>
+</header>
+<div class="main">
+  <aside class="panel pad">
+    <div class="ttl">联机设置</div>
+    <div class="field"><label>服务器地址</label><input id="serverUrl"></div>
+    <div class="field"><label>教室代号</label><input id="roomCode" value="classroom-101"></div>
+    <input id="role" value="student" hidden>
+    <div class="field"><label>客户端ID</label><input id="clientId"></div>
+    <div class="res" id="connState">未连接服务器。</div>
+    <div class="ttl" style="margin-top:14px">学生信息</div>
+    <div class="field"><label>班级</label><input id="className"></div>
+    <div class="field"><label>小组</label><input id="groupName"></div>
+    <div class="field"><label>记录员</label><input id="studentName"></div>
+    <div class="ttl" style="margin-top:14px">设备</div>
+    <div id="deviceList"></div>
+  </aside>
+  <section>
+    <div class="panel pad" style="margin-bottom:10px"><div class="actions"><button class="btn mode active" data-mode="place">摆放</button><button class="btn mode" data-mode="connect">连接</button><button class="btn mode" data-mode="config">配置</button><button class="btn mode" data-mode="test">测试</button><button class="btn" id="saveLayoutBtn">导出布局JSON</button><button class="btn" id="loadLayoutBtn">导入布局JSON</button><input type="file" id="layoutFile" accept="application/json" hidden></div></div>
+    <div class="workspaceWrap"><div class="workspace" id="workspace"><div class="grid"></div><svg id="svg"></svg></div></div>
+  </section>
+  <aside class="panel pad">
+    <div class="tabs"><button class="tab active" data-pane="config">配置</button><button class="tab" data-pane="test">测试</button></div>
+    <div class="pane active" id="pane-config">
+      <div class="field"><label>宽带账号</label><input id="pppoeUser"></div>
+      <div class="field"><label>宽带密码</label><input id="pppoePwd" type="password"></div>
+      <div class="field"><label>SSID</label><input id="ssid"></div>
+      <div class="field"><label>无线密码</label><input id="wifiPwd" type="password"></div>
+      <div class="field"><label>DNS 服务器</label><input id="dnsServer" value="8.8.8.8"></div>
+      <div class="field"><label>DHCP 起始地址</label><input id="dhcpStart" value="192.168.1.100"></div>
+      <div class="field"><label>DHCP 结束地址</label><input id="dhcpEnd" value="192.168.1.150"></div>
+      <div class="actions"><button class="btn primary" id="saveConfigBtn">保存配置</button><button class="btn secret-trigger" id="demoBtn" hidden>一键演示</button></div>
+      <div class="res" id="configResult">尚未保存配置。</div>
+    </div>
+    <div class="pane" id="pane-test">
+      <div class="field"><label>可见无线网络</label><select id="ssidSelect"></select></div>
+      <div class="field"><label>输入无线密码</label><input id="joinPwd" type="password"></div>
+      <div class="actions"><button class="btn primary" id="joinBtn">连接 Wi-Fi</button><button class="btn" id="runTestBtn">运行测试</button></div>
+      <div class="res" id="testResult">等待终端接入。</div>
+      <div class="res" id="submitResult">尚未提交到教师台。</div>
+      <table class="table"><tbody id="testTable"><tr><td>连接目标SSID</td><td>待测试</td></tr><tr><td>获取IP地址</td><td>待测试</td></tr><tr><td>DNS 解析</td><td>待测试</td></tr><tr><td>访问互联网</td><td>待测试</td></tr></tbody></table>
+    </div>
+  </aside>
+</div>
+<footer class="bottom">
+  <div class="status"><div>系统日志</div><div class="log" id="log">[init] 页面已加载。</div></div>
+  <div class="status"><div>联机状态</div><div class="log" id="netState">room=未连接</div></div>
+  <div class="status">
+    <div>当前连线提示</div>
+    <div class="noticeCard notice-info" id="linkNoticeCard" aria-live="polite">
+      <div class="noticeHead">
+        <div class="noticeIcon" id="linkNoticeIcon">i</div>
+        <div>
+          <div class="noticeTitle" id="linkNoticeTitle">等待操作</div>
+          <div class="noticeText" id="linkNoticeText">等待选择端口或连线。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="status"><div>评分</div><div class="score" id="score">0 / 100</div></div>
+</footer>
+</div>
+<script src="/client/assets/link-utils.js"></script>
+<script src="/client/assets/lab-data.js"></script>
+<script src="/client/assets/student-app.js?v=20260410c"></script>
+</body>
+</html>
