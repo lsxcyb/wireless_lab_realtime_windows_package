@@ -480,12 +480,34 @@ function applySnapshot(snapshotState) {
 }
 
 function wsUrl() { return `${$('serverUrl').value.replace(/\/$/, '')}/${$('roomCode').value}/${$('role').value}/${$('clientId').value}`; }
+
+function sendPresence() {
+  if (!state.socket || state.socket.readyState !== WebSocket.OPEN) return;
+  const payload = {
+    type: 'presence',
+    payload: {
+      client_id: $('clientId').value,
+      online: true,
+      className: $('className').value || '',
+      groupName: $('groupName').value || '',
+      studentName: $('studentName').value || ''
+    }
+  };
+  state.socket.send(JSON.stringify(payload));
+}
+
 function connect() {
   if (state.socket) state.socket.close();
   const ws = new WebSocket(wsUrl());
   state.socket = ws;
   $('connState').textContent = '连接中...';
-  ws.onopen = () => { $('connState').innerHTML = '<span class="good">已连接服务器。</span>'; $('netState').textContent = `room=${$('roomCode').value} | role=student`; log(`[ws] 已连接 ${wsUrl()}`); updateSubmitAvailability(); };
+  ws.onopen = () => {
+    $('connState').innerHTML = '<span class="good">已连接服务器。</span>';
+    $('netState').textContent = `room=${$('roomCode').value} | role=student`;
+    log(`[ws] 已连接 ${wsUrl()}`);
+    updateSubmitAvailability();
+    sendPresence();
+  };
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === 'state_sync' && (!msg.meta || msg.meta.role === 'teacher' || msg.meta.scope === 'teacher_shared')) {
@@ -516,8 +538,9 @@ function bindEvents() {
   $('loadLayoutBtn').onclick = () => $('layoutFile').click();
   $('layoutFile').onchange = (event) => { if (event.target.files[0]) loadLayout(event.target.files[0]); };
   $('demoBtn').onclick = demo;
-  $('className').addEventListener('input', updateSubmitAvailability);
-  $('groupName').addEventListener('input', updateSubmitAvailability);
+  $('className').addEventListener('input', () => { updateSubmitAvailability(); sendPresence(); });
+  $('groupName').addEventListener('input', () => { updateSubmitAvailability(); sendPresence(); });
+  $('studentName').addEventListener('input', sendPresence);
   $('ssid').addEventListener('input', () => refreshSSIDs(false));
   $('uplinkMode').addEventListener('change', syncUplinkModeForm);
   workspace.addEventListener('dragover', (event) => {

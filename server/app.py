@@ -151,6 +151,11 @@ async def websocket_endpoint(websocket: WebSocket, room: str, role: str, client_
                 await broadcast(room, {'type': 'board_update', 'room': room, 'payload': rooms[room]['board'], 'meta': {'from': client_id, 'role': role}})
             elif mtype == 'control':
                 await broadcast(room, {'type': 'control', 'room': room, 'payload': msg.get('payload', {}), 'meta': {'from': client_id, 'role': role}})
+            elif mtype == 'presence':
+                payload = msg.get('payload', {})
+                payload['client_id'] = client_id
+                payload['role'] = role
+                await broadcast(room, {'type': 'presence', 'room': room, 'payload': payload})
             elif mtype == 'ping':
                 await websocket.send_text(json.dumps({'type': 'pong'}, ensure_ascii=False))
     except WebSocketDisconnect:
