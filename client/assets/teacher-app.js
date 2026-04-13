@@ -1,4 +1,9 @@
-﻿const state = {
+﻿const boot = {
+  autoConnect: document.body.dataset.autoConnect === 'true',
+  defaultRoom: document.body.dataset.defaultRoom || 'classroom-101',
+};
+
+const state = {
   board: [],
   socket: null,
   room: boot.defaultRoom,
@@ -10,11 +15,6 @@
     trend: null,
     ranking: null
   }
-};
-
-const boot = {
-  autoConnect: document.body.dataset.autoConnect === 'true',
-  defaultRoom: document.body.dataset.defaultRoom || 'classroom-101',
 };
 
 const $ = (id) => document.getElementById(id);
