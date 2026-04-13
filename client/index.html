@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>无线网络虚拟实验室 学生端</title>
-<link rel="stylesheet" href="/client/assets/app.css?v=20260410c" />
+<link rel="stylesheet" href="/client/assets/app.css?v=20260413a" />
 </head>
 <body data-route-role="__ROUTE_ROLE__" data-auto-connect="__AUTO_CONNECT__" data-default-room="__DEFAULT_ROOM__">
 <div class="shell">
@@ -38,8 +38,17 @@
   <aside class="panel pad">
     <div class="tabs"><button class="tab active" data-pane="config">配置</button><button class="tab" data-pane="test">测试</button></div>
     <div class="pane active" id="pane-config">
-      <div class="field"><label>宽带账号</label><input id="pppoeUser"></div>
-      <div class="field"><label>宽带密码</label><input id="pppoePwd" type="password"></div>
+      <div class="field"><label>上联口连接方式</label><select id="uplinkMode"><option value="pppoe">PPPoE 拨号</option><option value="dhcp">DHCP客户端</option><option value="static">静态地址</option></select></div>
+      <div class="res formHint" id="uplinkModeHint">默认使用 PPPoE 拨号。请先选择上联口连接方式，再填写对应参数。</div>
+      <div class="uplinkSection" data-uplink-section="pppoe">
+        <div class="field"><label>宽带账号</label><input id="pppoeUser"></div>
+        <div class="field"><label>宽带密码</label><input id="pppoePwd" type="password"></div>
+      </div>
+      <div class="uplinkSection" data-uplink-section="static">
+        <div class="field"><label>上联口静态IP</label><input id="wanIp" value="192.168.1.2"></div>
+        <div class="field"><label>子网掩码</label><input id="wanMask" value="255.255.255.0"></div>
+        <div class="field"><label>默认网关</label><input id="wanGateway" value="192.168.1.1"></div>
+      </div>
       <div class="field"><label>SSID</label><input id="ssid"></div>
       <div class="field"><label>无线密码</label><input id="wifiPwd" type="password"></div>
       <div class="field"><label>DNS 服务器</label><input id="dnsServer" value="8.8.8.8"></div>
@@ -78,6 +87,6 @@
 </div>
 <script src="/client/assets/link-utils.js"></script>
 <script src="/client/assets/lab-data.js"></script>
-<script src="/client/assets/student-app.js?v=20260410c"></script>
+<script src="/client/assets/student-app.js?v=20260413a"></script>
 </body>
 </html>

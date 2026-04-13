@@ -122,11 +122,12 @@ async def websocket_endpoint(websocket: WebSocket, room: str, role: str, client_
     await websocket.accept()
     ensure_room(room)
     clients[room].append(websocket)
+    initial_role = 'teacher' if role == 'student' else role
     await websocket.send_text(json.dumps({
         'type': 'state_sync',
         'room': room,
         'payload': rooms[room],
-        'meta': {'role': role, 'client_id': client_id}
+        'meta': {'role': initial_role, 'client_id': client_id, 'scope': 'teacher_shared'}
     }, ensure_ascii=False))
     await broadcast(room, {'type': 'presence', 'room': room, 'payload': {'client_id': client_id, 'role': role, 'online': True}})
     try:
@@ -135,9 +136,13 @@ async def websocket_endpoint(websocket: WebSocket, room: str, role: str, client_
             msg = json.loads(data)
             mtype = msg.get('type')
             if mtype == 'state_sync':
+                if role != 'teacher':
+                    continue
                 rooms[room] = msg.get('payload', rooms[room])
-                await broadcast(room, {'type': 'state_sync', 'room': room, 'payload': rooms[room], 'meta': {'from': client_id, 'role': role}})
+                await broadcast(room, {'type': 'state_sync', 'room': room, 'payload': rooms[room], 'meta': {'from': client_id, 'role': role, 'scope': 'teacher_shared'}})
             elif mtype == 'board_update':
+                if role != 'teacher':
+                    continue
                 rooms[room]['board'] = msg.get('payload', [])
                 await broadcast(room, {'type': 'board_update', 'room': room, 'payload': rooms[room]['board'], 'meta': {'from': client_id, 'role': role}})
             elif mtype == 'board_submit':

@@ -141,6 +141,19 @@ function updateLinkNotice() {
   setLinkNotice({ tone: 'good', title: '必需连线已完成', detail: '当前拓扑正确。可继续配置并执行网络测试。', icon: '✓' });
 }
 
+function syncUplinkModeForm() {
+  const mode = $('uplinkMode').value;
+  document.querySelectorAll('[data-uplink-section]').forEach((section) => {
+    section.hidden = section.dataset.uplinkSection !== mode;
+  });
+  const hints = {
+    pppoe: '当前为 PPPoE 拨号模式，需要填写宽带账号和密码。',
+    dhcp: '当前为 DHCP 客户端模式，上联口会自动获取地址。',
+    static: '当前为静态地址模式，请填写上联口 IP、子网掩码和默认网关。',
+  };
+  $('uplinkModeHint').textContent = hints[mode] || '';
+}
+
 function refreshSSIDs(selectNew = true) {
   const host = $('ssidSelect');
   const custom = ($('ssid').value || '').trim();
@@ -339,11 +352,36 @@ function portClick(key) {
 
 function validDNS(value) { return /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/.test((value || '').trim()); }
 function dnsLooksReachable(value) { return ['8.8.8.8', '8.8.4.4', '114.114.114.114', '1.1.1.1', '223.5.5.5', '180.76.76.76', '192.168.1.1'].includes((value || '').trim()); }
+function validIpv4(value) { return validDNS(value); }
+function validConfig(config) {
+  if (!config) return false;
+  if (config.uplinkMode === 'pppoe') return !!config.user && !!config.pwd && !!config.ssid && !!config.wifi && validDNS(config.dns);
+  if (config.uplinkMode === 'dhcp') return !!config.ssid && !!config.wifi && validDNS(config.dns);
+  if (config.uplinkMode === 'static') return !!config.ssid && !!config.wifi && validDNS(config.dns) && validIpv4(config.wanIp) && validIpv4(config.wanMask) && validIpv4(config.wanGateway);
+  return false;
+}
 
 function saveConfig() {
-  state.config = { user: $('pppoeUser').value, pwd: $('pppoePwd').value, ssid: $('ssid').value, wifi: $('wifiPwd').value, dns: $('dnsServer').value, start: $('dhcpStart').value, end: $('dhcpEnd').value };
+  state.config = {
+    uplinkMode: $('uplinkMode').value,
+    user: $('pppoeUser').value.trim(),
+    pwd: $('pppoePwd').value,
+    wanIp: $('wanIp').value.trim(),
+    wanMask: $('wanMask').value.trim(),
+    wanGateway: $('wanGateway').value.trim(),
+    ssid: $('ssid').value.trim(),
+    wifi: $('wifiPwd').value,
+    dns: $('dnsServer').value.trim(),
+    start: $('dhcpStart').value.trim(),
+    end: $('dhcpEnd').value.trim(),
+  };
   refreshSSIDs(true);
-  $('configResult').innerHTML = `<span class="good">已保存配置：</span>SSID=${state.config.ssid}`;
+  if (!validConfig(state.config)) {
+    $('configResult').innerHTML = '<span class="warn">配置已保存，但当前上联方式所需参数还未填写完整。</span>';
+  } else {
+    const modeLabels = { pppoe: 'PPPoE拨号', dhcp: 'DHCP客户端', static: '静态地址' };
+    $('configResult').innerHTML = `<span class="good">已保存配置：</span>${modeLabels[state.config.uplinkMode]} / SSID=${state.config.ssid}`;
+  }
   log('[config] 已保存并刷新SSID列表');
   score();
 }
@@ -359,7 +397,7 @@ function joinWifi() {
 
 function runTest() {
   const linkOk = correctLinks() === requiredLinkGroupCount;
-  const configOk = !!state.config;
+  const configOk = validConfig(state.config);
   const joinedOk = !!state.joined;
   const dnsValue = configOk ? state.config.dns || '' : '';
   const dnsResolveOk = validDNS(dnsValue) && dnsLooksReachable(dnsValue);
@@ -422,13 +460,18 @@ function applySnapshot(snapshotState) {
   }
   if (snapshotState.config) {
     state.config = snapshotState.config;
+    $('uplinkMode').value = snapshotState.config.uplinkMode || 'pppoe';
     $('pppoeUser').value = snapshotState.config.user || '';
     $('pppoePwd').value = snapshotState.config.pwd || '';
+    $('wanIp').value = snapshotState.config.wanIp || '192.168.1.2';
+    $('wanMask').value = snapshotState.config.wanMask || '255.255.255.0';
+    $('wanGateway').value = snapshotState.config.wanGateway || '192.168.1.1';
     $('ssid').value = snapshotState.config.ssid || '';
     $('wifiPwd').value = snapshotState.config.wifi || '';
     $('dnsServer').value = snapshotState.config.dns || '8.8.8.8';
     $('dhcpStart').value = snapshotState.config.start || '192.168.1.100';
     $('dhcpEnd').value = snapshotState.config.end || '192.168.1.150';
+    syncUplinkModeForm();
     refreshSSIDs(true);
   }
   renderDeviceList();
@@ -443,14 +486,20 @@ function connect() {
   state.socket = ws;
   $('connState').textContent = '连接中...';
   ws.onopen = () => { $('connState').innerHTML = '<span class="good">已连接服务器。</span>'; $('netState').textContent = `room=${$('roomCode').value} | role=student`; log(`[ws] 已连接 ${wsUrl()}`); updateSubmitAvailability(); };
-  ws.onmessage = (event) => { const msg = JSON.parse(event.data); if (msg.type === 'state_sync') { applySnapshot(msg.payload); log('[ws] 已接收教师同步'); } };
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    if (msg.type === 'state_sync' && (!msg.meta || msg.meta.role === 'teacher' || msg.meta.scope === 'teacher_shared')) {
+      applySnapshot(msg.payload);
+      log('[ws] 已接收教师同步');
+    }
+  };
   ws.onclose = () => { $('connState').innerHTML = '<span class="warn">连接已断开。</span>'; updateSubmitAvailability(); };
   ws.onerror = () => { $('connState').innerHTML = '<span class="bad">连接失败，请检查服务器地址。</span>'; updateSubmitAvailability(); };
 }
 
 function saveLayout() { const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'student_topology.json'; a.click(); URL.revokeObjectURL(a.href); }
 function loadLayout(file) { const reader = new FileReader(); reader.onload = () => applySnapshot(JSON.parse(reader.result)); reader.readAsText(file, 'utf-8'); }
-function demo() { state.placedDeviceIds = allDevices.map((device) => device.id); state.links = LabData.createDemoLinks(); $('pppoeUser').value = 'school_classroom'; $('pppoePwd').value = 'Class@2026'; $('ssid').value = 'SmartClass-101'; $('wifiPwd').value = 'ClassNet2026'; $('dnsServer').value = '8.8.8.8'; $('dhcpStart').value = '192.168.1.100'; $('dhcpEnd').value = '192.168.1.150'; saveConfig(); $('joinPwd').value = 'ClassNet2026'; joinWifi(); runTest(); renderDeviceList(); renderWorkspace(); }
+function demo() { state.placedDeviceIds = allDevices.map((device) => device.id); state.links = LabData.createDemoLinks(); $('uplinkMode').value = 'pppoe'; syncUplinkModeForm(); $('pppoeUser').value = 'school_classroom'; $('pppoePwd').value = 'Class@2026'; $('wanIp').value = '192.168.1.2'; $('wanMask').value = '255.255.255.0'; $('wanGateway').value = '192.168.1.1'; $('ssid').value = 'SmartClass-101'; $('wifiPwd').value = 'ClassNet2026'; $('dnsServer').value = '8.8.8.8'; $('dhcpStart').value = '192.168.1.100'; $('dhcpEnd').value = '192.168.1.150'; saveConfig(); $('joinPwd').value = 'ClassNet2026'; joinWifi(); runTest(); renderDeviceList(); renderWorkspace(); }
 
 function applyRouteBootstrap() { $('clientId').value = `student-${Math.random().toString(36).slice(2, 8)}`; $('serverUrl').value = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`; $('roomCode').value = boot.defaultRoom; $('connState').textContent = boot.autoConnect ? '正在自动连接服务器...' : '未连接服务器。'; }
 
@@ -470,6 +519,7 @@ function bindEvents() {
   $('className').addEventListener('input', updateSubmitAvailability);
   $('groupName').addEventListener('input', updateSubmitAvailability);
   $('ssid').addEventListener('input', () => refreshSSIDs(false));
+  $('uplinkMode').addEventListener('change', syncUplinkModeForm);
   workspace.addEventListener('dragover', (event) => {
     if (!state.paletteDragId) return;
     event.preventDefault();
@@ -536,6 +586,6 @@ function bindEvents() {
   });
 }
 
-function bootApp() { applyRouteBootstrap(); bindEvents(); syncThemeButton(); refreshSSIDs(false); renderDeviceList(); renderWorkspace(); score(); updateSubmitAvailability(); if (boot.autoConnect) connect(); }
+function bootApp() { applyRouteBootstrap(); bindEvents(); syncThemeButton(); syncUplinkModeForm(); refreshSSIDs(false); renderDeviceList(); renderWorkspace(); score(); updateSubmitAvailability(); if (boot.autoConnect) connect(); }
 
 bootApp();
