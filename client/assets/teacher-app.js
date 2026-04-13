@@ -1,313 +1,65 @@
-const photos = LabData.photos;
-const devices = LabData.createDevices();
-const linkGroups = LabData.linkGroups;
-const linkRules = LinkUtils.buildLinkRules(linkGroups);
-const requiredLinkGroupCount = linkGroups.filter((group) => group.required !== false).length;
-const state = {
-  mode: 'select',
-  selectedDevice: null,
-  selectedPort: null,
-  links: [],
+﻿const state = {
   board: [],
   socket: null,
-  dragging: null,
-  hoveredLink: null,
+  room: boot.defaultRoom,
+  clientId: `teacher-${Math.random().toString(36).slice(2, 8)}`,
+  onlineStudents: [],
+  trendData: [],
+  chartInstances: {
+    pie: null,
+    trend: null,
+    ranking: null
+  }
 };
+
 const boot = {
   autoConnect: document.body.dataset.autoConnect === 'true',
   defaultRoom: document.body.dataset.defaultRoom || 'classroom-101',
 };
+
 const $ = (id) => document.getElementById(id);
-const workspace = $('workspace');
-const svg = $('svg');
-let demoRevealTimer = null;
 
 function log(text) {
   $('log').textContent += `\n${text}`;
   $('log').scrollTop = $('log').scrollHeight;
 }
 
-function setLinkNotice({ tone = 'info', title, detail, icon }) {
+function syncThemeButton() {
+  $('themeBtn').textContent = document.documentElement.dataset.theme === 'dark' ? '切换浅色' : '切换深色';
+}
+
+function setNotice({ tone = 'info', title, detail, icon }) {
   $('linkNoticeCard').className = `noticeCard notice-${tone}`;
   $('linkNoticeTitle').textContent = title;
   $('linkNoticeText').textContent = detail;
   $('linkNoticeIcon').textContent = icon;
 }
 
-function syncThemeButton() {
-  $('themeBtn').textContent = document.documentElement.dataset.theme === 'dark' ? '切换浅色' : '切换深色';
+function normalizeScore(value) {
+  const score = Number.parseInt(String(value || '0'), 10);
+  return Number.isFinite(score) ? score : 0;
 }
 
-function revealDemoButton() {
-  const button = $('demoBtn');
-  button.hidden = false;
-  button.classList.add('revealed');
-  log('[hint] 已显示隐藏演示按钮，快捷键 Ctrl+Shift+D 也可直接触发演示。');
-  clearTimeout(demoRevealTimer);
-  demoRevealTimer = setTimeout(() => {
-    button.hidden = true;
-    button.classList.remove('revealed');
-  }, 8000);
+function scoreTone(test) {
+  if (test === '通过') return 'good';
+  if (test === 'DNS异常') return 'warn';
+  return 'bad';
 }
 
-function normalizeLinkKey(a, b) {
-  return LinkUtils.normalizeLinkKey(a, b);
-}
-
-function formatEndpoint(endpoint) {
-  return LinkUtils.formatEndpointLabel(endpoint);
-}
-
-function getLinkIssue(a, b) {
-  return LinkUtils.getLinkIssue(a, b, linkRules, state.links);
-}
-
-function correctLinks() {
-  return LinkUtils.getSatisfiedRequiredGroupCount(state.links, linkRules);
-}
-
-function getMissingRequiredGroups() {
-  return LinkUtils.getMissingRequiredGroups(state.links, linkRules);
-}
-
-function score() {
-  const percent = Math.round((correctLinks() / requiredLinkGroupCount) * 100);
-  $('score').textContent = `${percent} / 100`;
-}
-
-function updateLinkNotice() {
-  if (state.hoveredLink) {
-    const hovered = state.links.find(([a, b]) => normalizeLinkKey(a, b) === state.hoveredLink);
-    if (hovered) {
-      const issue = getLinkIssue(hovered[0], hovered[1]);
-      if (issue) {
-        setLinkNotice({ tone: 'bad', title: '错误连线', detail: issue, icon: '!' });
-        return;
-      }
-      setLinkNotice({
-        tone: 'good',
-        title: '演示连线正确',
-        detail: `${formatEndpoint(hovered[0])} ↔ ${formatEndpoint(hovered[1])}`,
-        icon: '✓',
-      });
-      return;
-    }
-  }
-
-  if (state.selectedPort) {
-    setLinkNotice({
-      tone: 'warn',
-      title: '等待完成连线',
-      detail: `已选择 ${formatEndpoint(state.selectedPort)}，请继续选择另一端口。`,
-      icon: '…',
-    });
-    return;
-  }
-
-  const invalidLink = state.links.find(([a, b]) => !!getLinkIssue(a, b));
-  if (invalidLink) {
-    setLinkNotice({
-      tone: 'bad',
-      title: '存在错误连线',
-      detail: getLinkIssue(invalidLink[0], invalidLink[1]),
-      icon: '!',
-    });
-    return;
-  }
-
-  const missing = getMissingRequiredGroups();
-  if (missing.length) {
-    setLinkNotice({
-      tone: 'warn',
-      title: '演示拓扑未完成',
-      detail: `还缺少：${missing.map((item) => item.label).join('、')}。`,
-      icon: '!',
-    });
-    return;
-  }
-
-  setLinkNotice({
-    tone: 'good',
-    title: '教师演示拓扑已就绪',
-    detail: '当前可以推送全班同步。',
-    icon: '✓',
-  });
-}
-
-function renderDeviceList() {
-  const host = $('deviceList');
+function renderBoardCards() {
+  const host = $('boardCards');
   host.innerHTML = '';
-  devices.forEach((device) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `box deviceItem${state.selectedDevice === device.id ? ' active' : ''}`;
-    button.setAttribute('aria-pressed', String(state.selectedDevice === device.id));
-    button.innerHTML = `<div style="font-weight:700">${device.name}</div><div class="small">${device.type}</div>`;
-    button.onclick = () => {
-      state.selectedDevice = device.id;
-      renderDeviceList();
-      renderWorkspace();
-    };
-    host.appendChild(button);
+  state.board.forEach((row) => {
+    const card = document.createElement('article');
+    card.className = `teacherSubmitCard ${scoreTone(row.test)}`;
+    card.innerHTML = `<div class="teacherSubmitTop"><strong>${row.className}</strong><span>${row.groupName}</span></div><div class="teacherSubmitName">${row.studentName}</div><div class="teacherSubmitMeta"><span>分数 ${row.score}</span><span>状态 ${row.test}</span></div>`;
+    host.appendChild(card);
   });
 }
 
-function portCenter(el) {
-  const wr = workspace.getBoundingClientRect();
-  const r = el.getBoundingClientRect();
-  return { x: r.left - wr.left + r.width / 2, y: r.top - wr.top + r.height / 2 };
-}
-
-function syncHoveredPorts() {
-  document.querySelectorAll('.port').forEach((el) => {
-    el.classList.toggle('link-hover', !!state.hoveredLink && state.hoveredLink.includes(el.dataset.key));
-  });
-}
-
-function setHoveredLink(linkKey) {
-  state.hoveredLink = linkKey;
-  document.querySelectorAll('.link-path').forEach((path) => {
-    path.classList.toggle('hovered', path.dataset.linkKey === state.hoveredLink);
-  });
-  syncHoveredPorts();
-  updateLinkNotice();
-}
-
-function drawLinks() {
-  svg.innerHTML = '';
-  svg.setAttribute('viewBox', `0 0 ${workspace.clientWidth} ${workspace.clientHeight}`);
-  state.links.forEach((link, index) => {
-    const a = workspace.querySelector(`[data-key="${link[0]}"]`);
-    const b = workspace.querySelector(`[data-key="${link[1]}"]`);
-    if (!a || !b) return;
-    const p1 = portCenter(a);
-    const p2 = portCenter(b);
-    const mid = (p1.x + p2.x) / 2;
-    const key = normalizeLinkKey(link[0], link[1]);
-    const issue = getLinkIssue(link[0], link[1]);
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', `M ${p1.x} ${p1.y} C ${mid} ${p1.y}, ${mid} ${p2.y}, ${p2.x} ${p2.y}`);
-    path.setAttribute('fill', 'none');
-    path.setAttribute('stroke', index % 2 === 0 ? '#2563eb' : '#8b5cf6');
-    path.setAttribute('stroke-width', '4');
-    path.setAttribute('class', `link-path${issue ? ' invalid' : ''}${state.hoveredLink === key ? ' hovered' : ''}`);
-    path.dataset.linkKey = key;
-    path.onmouseenter = () => setHoveredLink(key);
-    path.onmouseleave = () => setHoveredLink(null);
-    path.onclick = (event) => {
-      event.stopPropagation();
-      deleteLink(key);
-    };
-    path.oncontextmenu = (event) => {
-      event.preventDefault();
-      deleteLink(key);
-    };
-    if (issue) {
-      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = issue;
-      path.appendChild(title);
-    }
-    svg.appendChild(path);
-  });
-  syncHoveredPorts();
-}
-
-function enableDrag(node, id) {
-  const handle = node.querySelector('.dragHandle');
-  const start = (event) => {
-    state.dragging = {
-      id,
-      startX: event.touches ? event.touches[0].clientX : event.clientX,
-      startY: event.touches ? event.touches[0].clientY : event.clientY,
-      origX: devices.find((item) => item.id === id).x,
-      origY: devices.find((item) => item.id === id).y,
-    };
-    event.preventDefault();
-  };
-  handle.addEventListener('mousedown', start);
-  handle.addEventListener('touchstart', start, { passive: false });
-}
-
-function renderWorkspace() {
-  [...workspace.querySelectorAll('.node')].forEach((node) => node.remove());
-  devices.forEach((device) => {
-    const node = document.createElement('div');
-    node.className = `node${state.selectedDevice === device.id ? ' sel' : ''}`;
-    node.dataset.id = device.id;
-    node.style.left = `${device.x}px`;
-    node.style.top = `${device.y}px`;
-    node.innerHTML = `<div class="led ${state.links.some((link) => link[0].startsWith(`${device.id}:`) || link[1].startsWith(`${device.id}:`)) ? 'on' : ''}"></div><div class="nodeHead"><div><div class="iconWrap"><img src="${photos[device.id]}" alt="${device.name}"><div class="iconFallback">${device.name}</div></div><div class="imgTag">${device.name}</div></div><div><div style="font-weight:700">${device.name}</div><div class="meta">${device.type}</div></div></div><div class="ports"></div><div class="dragHandle">拖动设备位置</div><div class="linkHint">提示：教师台整理拓扑后可推送全班同步</div>`;
-    const img = node.querySelector('img');
-    const fallback = node.querySelector('.iconFallback');
-    img.onerror = () => {
-      img.style.display = 'none';
-      fallback.style.display = 'block';
-    };
-    const ports = node.querySelector('.ports');
-    device.ports.forEach((port) => {
-      const key = `${device.id}:${port}`;
-      const related = state.links.filter(([a, b]) => a === key || b === key);
-      const classes = ['port'];
-      if (state.mode === 'connect' && state.selectedPort !== key && related.length === 0) classes.push('connectable');
-      if (related.length > 0) classes.push('connected');
-      if (related.some(([a, b]) => !!getLinkIssue(a, b))) classes.push('invalid-link');
-      if (state.selectedPort === key) classes.push('active');
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = classes.join(' ');
-      button.dataset.key = key;
-      button.textContent = port;
-      button.setAttribute('aria-pressed', String(state.selectedPort === key));
-      button.onclick = (event) => {
-        event.stopPropagation();
-        portClick(key);
-      };
-      ports.appendChild(button);
-    });
-    enableDrag(node, device.id);
-    workspace.appendChild(node);
-  });
-  requestAnimationFrame(drawLinks);
-  updateLinkNotice();
-}
-
-function deleteLink(linkKey) {
-  const next = LinkUtils.removeLinkByKey(state.links, linkKey);
-  if (next.length === state.links.length) return;
-  state.links = next;
-  state.hoveredLink = null;
-  renderWorkspace();
-  score();
-  pushState();
-}
-
-function portClick(key) {
-  if (state.mode !== 'connect') return;
-  if (!state.selectedPort) {
-    state.selectedPort = key;
-    return renderWorkspace();
-  }
-  if (state.selectedPort === key) {
-    state.selectedPort = null;
-    return renderWorkspace();
-  }
-  const exists = state.links.some(([a, b]) => (a === state.selectedPort && b === key) || (a === key && b === state.selectedPort));
-  if (!exists) {
-    state.links.push([state.selectedPort, key]);
-    const issue = getLinkIssue(state.selectedPort, key);
-    if (issue) log(`[link][error] ${issue}`);
-    else log(`[link] 已连接 ${normalizeLinkKey(state.selectedPort, key)}`);
-  }
-  state.selectedPort = null;
-  renderWorkspace();
-  score();
-  pushState();
-}
-
-function renderBoard() {
+function renderBoardTable() {
   const host = $('boardBody');
   host.innerHTML = '';
-  $('boardSummary').textContent = state.board.length ? `当前已汇总 ${state.board.length} 条学生结果。` : '当前还没有学生提交结果。';
   state.board.forEach((row) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${row.className}</td><td>${row.groupName}</td><td>${row.studentName}</td><td>${row.score}</td><td>${row.test}</td>`;
@@ -315,184 +67,311 @@ function renderBoard() {
   });
 }
 
+function renderStats() {
+  const total = state.board.length;
+  const pass = state.board.filter((row) => row.test === '通过').length;
+  const warn = state.board.filter((row) => row.test === 'DNS异常').length;
+  const fail = total - pass - warn;
+  $('statTotal').textContent = String(total);
+  $('statPass').textContent = String(pass);
+  $('statWarn').textContent = String(warn);
+  $('statFail').textContent = String(fail);
+  $('score').textContent = `${pass} / ${total}`;
+  $('boardSummary').textContent = total ? `当前已接收 ${total} 条学生提交结果。` : '当前还没有学生提交结果。';
+  $('teacherResult').textContent = total ? '学生提交数据已更新。' : '等待学生提交。';
+
+  if (!total) {
+    setNotice({ tone: 'info', title: '等待数据', detail: '等待学生端提交实验结果。', icon: 'i' });
+    return;
+  }
+  if (fail > 0) {
+    setNotice({ tone: 'bad', title: '存在未通过结果', detail: `当前有 ${fail} 组结果未通过，请优先关注。`, icon: '!' });
+    return;
+  }
+  if (warn > 0) {
+    setNotice({ tone: 'warn', title: '存在 DNS 异常', detail: `当前有 ${warn} 组结果为 DNS 异常。`, icon: '!' });
+    return;
+  }
+  setNotice({ tone: 'good', title: '全部通过', detail: '当前提交的学生结果均已通过测试。', icon: '✓' });
+}
+
+function renderBoard() {
+  renderBoardCards();
+  renderBoardTable();
+  renderStats();
+}
+
+function renderOnlineStudents() {
+  const container = $('onlineStudentsScroll');
+  const count = $('onlineStudentsCount');
+
+  if (state.onlineStudents.length === 0) {
+    container.innerHTML = '<div class="emptyState">暂无学生在线，等待学生连接...</div>';
+    count.textContent = '在线学生：0 人';
+    return;
+  }
+
+  container.innerHTML = state.onlineStudents.map(student => `
+    <div class="onlineStudentCard">
+      <span class="onlineIndicator"></span>
+      <span>${student.className} | ${student.groupName} | ${student.studentName}</span>
+    </div>
+  `).join('');
+
+  count.textContent = `在线学生：${state.onlineStudents.length} 人`;
+}
+
+function initCharts() {
+  if (!window.echarts) {
+    console.error('ECharts 未加载');
+    return;
+  }
+
+  state.chartInstances.pie = echarts.init($('pieChart'));
+  state.chartInstances.trend = echarts.init($('trendChart'));
+  state.chartInstances.ranking = echarts.init($('rankingChart'));
+
+  window.addEventListener('resize', () => {
+    Object.values(state.chartInstances).forEach(chart => chart && chart.resize());
+  });
+
+  updateCharts();
+}
+
+function updateCharts() {
+  updatePieChart();
+  updateTrendChart();
+  updateRankingChart();
+}
+
+function updatePieChart() {
+  if (!state.chartInstances.pie) return;
+
+  const pass = state.board.filter(row => row.test === '通过').length;
+  const warn = state.board.filter(row => row.test === 'DNS异常').length;
+  const fail = state.board.length - pass - warn;
+
+  const option = {
+    tooltip: { trigger: 'item' },
+    legend: { orient: 'vertical', left: 'left' },
+    series: [{
+      type: 'pie',
+      radius: '50%',
+      data: [
+        { value: pass, name: '通过', itemStyle: { color: '#4ade80' } },
+        { value: warn, name: 'DNS异常', itemStyle: { color: '#fbbf24' } },
+        { value: fail, name: '未通过', itemStyle: { color: '#f87171' } }
+      ],
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }
+    }]
+  };
+
+  state.chartInstances.pie.setOption(option);
+}
+
+function addTrendDataPoint() {
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+  const total = state.board.length;
+  const pass = state.board.filter(row => row.test === '通过').length;
+
+  if (state.trendData.length > 0) {
+    const lastPoint = state.trendData[state.trendData.length - 1];
+    const lastTime = new Date(`1970-01-01 ${lastPoint.time}`);
+    const currentTime = new Date(`1970-01-01 ${timeStr}`);
+    if ((currentTime - lastTime) / 1000 < 10) {
+      lastPoint.total = total;
+      lastPoint.pass = pass;
+      return;
+    }
+  }
+
+  state.trendData.push({ time: timeStr, total, pass });
+
+  if (state.trendData.length > 20) {
+    state.trendData.shift();
+  }
+}
+
+function updateTrendChart() {
+  if (!state.chartInstances.trend) return;
+
+  const option = {
+    tooltip: { trigger: 'axis' },
+    legend: { data: ['提交总数', '通过数'] },
+    xAxis: {
+      type: 'category',
+      data: state.trendData.map(d => d.time)
+    },
+    yAxis: { type: 'value' },
+    series: [
+      {
+        name: '提交总数',
+        type: 'line',
+        smooth: true,
+        data: state.trendData.map(d => d.total),
+        itemStyle: { color: '#3b82f6' }
+      },
+      {
+        name: '通过数',
+        type: 'line',
+        smooth: true,
+        data: state.trendData.map(d => d.pass),
+        itemStyle: { color: '#4ade80' }
+      }
+    ]
+  };
+
+  state.chartInstances.trend.setOption(option);
+}
+
+function calculateGroupRanking() {
+  const groupMap = {};
+
+  state.board.forEach(row => {
+    const key = `${row.className} ${row.groupName}`;
+    if (!groupMap[key]) {
+      groupMap[key] = { scores: [], name: key };
+    }
+    groupMap[key].scores.push(normalizeScore(row.score));
+  });
+
+  const rankings = Object.values(groupMap).map(group => ({
+    name: group.name,
+    avgScore: group.scores.reduce((a, b) => a + b, 0) / group.scores.length
+  }));
+
+  rankings.sort((a, b) => b.avgScore - a.avgScore);
+
+  return rankings.slice(0, 10);
+}
+
+function updateRankingChart() {
+  if (!state.chartInstances.ranking) return;
+
+  const rankings = calculateGroupRanking();
+
+  const option = {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: '20%' },
+    xAxis: { type: 'value', max: 100 },
+    yAxis: {
+      type: 'category',
+      data: rankings.map(r => r.name).reverse()
+    },
+    series: [{
+      type: 'bar',
+      data: rankings.map(r => r.avgScore).reverse(),
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+          { offset: 0, color: '#83bff6' },
+          { offset: 1, color: '#188df0' }
+        ])
+      },
+      label: {
+        show: true,
+        position: 'right',
+        formatter: '{c}'
+      }
+    }]
+  };
+
+  state.chartInstances.ranking.setOption(option);
+}
+
 function exportBoard() {
-  const rows = [['班级', '小组', '姓名', '分数', '测试结果']].concat(state.board.map((row) => [row.className, row.groupName, row.studentName, row.score, row.test]));
+  const rows = [['班级', '小组', '姓名', '分数', '测试结果']].concat(
+    state.board.map((row) => [row.className, row.groupName, row.studentName, row.score, row.test])
+  );
   const csv = `\uFEFF${rows.map((row) => row.map((value) => `"${value}"`).join(',')).join('\n')}`;
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'teacher_board.csv';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function snapshot() {
-  return {
-    topology: { devices: devices.map((device) => ({ id: device.id, x: device.x, y: device.y })), links: state.links },
-    teacher: { mode: $('lessonMode').value, fault: $('faultInject').value, note: $('teacherNote').value },
-    board: state.board,
-  };
-}
-
-function applySnapshot(data) {
-  if (data.topology && Array.isArray(data.topology.devices)) {
-    data.topology.devices.forEach((position) => {
-      const device = devices.find((item) => item.id === position.id);
-      if (device) {
-        device.x = position.x;
-        device.y = position.y;
-      }
-    });
-    state.links = data.topology.links || [];
-  }
-  if (data.teacher) {
-    $('lessonMode').value = data.teacher.mode || 'demo';
-    $('faultInject').value = data.teacher.fault || 'none';
-    $('teacherNote').value = data.teacher.note || '';
-  }
-  if (data.board) state.board = data.board;
-  renderBoard();
-  renderWorkspace();
-  score();
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'teacher_board.csv';
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 function wsUrl() {
-  const base = $('serverUrl').value.replace(/\/$/, '');
-  return `${base}/${$('roomCode').value}/${$('role').value}/${$('clientId').value}`;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${proto}://${location.host}/ws/${state.room}/teacher/${state.clientId}`;
 }
 
 function connect() {
   if (state.socket) state.socket.close();
   const ws = new WebSocket(wsUrl());
   state.socket = ws;
-  $('connState').textContent = '连接中...';
+  log(`[ws] 连接中 ${wsUrl()}`);
   ws.onopen = () => {
-    $('connState').innerHTML = '<span class="good">已连接服务器。</span>';
-    $('netState').textContent = `room=${$('roomCode').value} | role=teacher`;
-    log(`[ws] 已连接 ${wsUrl()}`);
+    $('netState').textContent = `room=${state.room} | role=teacher | id=${state.clientId}`;
+    log(`[ws] 已连接`);
   };
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
-    if (msg.type === 'state_sync' && (!msg.meta || msg.meta.role === 'teacher')) applySnapshot(msg.payload);
     if (msg.type === 'board_update') {
       state.board = msg.payload || [];
       renderBoard();
+      addTrendDataPoint();
+      updateCharts();
+      log(`[board] 已接收 ${state.board.length} 条学生结果`);
+      return;
+    }
+    if (msg.type === 'state_sync' && msg.payload && Array.isArray(msg.payload.board)) {
+      state.board = msg.payload.board;
+      renderBoard();
+      addTrendDataPoint();
+      updateCharts();
+    }
+    if (msg.type === 'presence') {
+      const { client_id, online, className, groupName, studentName } = msg.payload;
+
+      if (online) {
+        const index = state.onlineStudents.findIndex(s => s.client_id === client_id);
+        const student = { client_id, className, groupName, studentName };
+
+        if (index >= 0) {
+          state.onlineStudents[index] = student;
+        } else {
+          state.onlineStudents.push(student);
+        }
+      } else {
+        state.onlineStudents = state.onlineStudents.filter(s => s.client_id !== client_id);
+      }
+
+      renderOnlineStudents();
+      log(`[presence] ${studentName || client_id} ${online ? '上线' : '离线'}`);
     }
   };
   ws.onclose = () => {
-    $('connState').innerHTML = '<span class="warn">连接已断开。</span>';
+    $('netState').textContent = 'room=连接已断开';
+    log('[ws] 连接已断开');
   };
   ws.onerror = () => {
-    $('connState').innerHTML = '<span class="bad">连接失败，请检查服务器地址。</span>';
+    $('netState').textContent = 'room=连接失败';
+    log('[ws] 连接失败');
   };
-}
-
-function pushState() {
-  if (!state.socket || state.socket.readyState !== 1) return;
-  state.socket.send(JSON.stringify({ type: 'state_sync', payload: snapshot() }));
-}
-
-function saveLayout() {
-  const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'teacher_topology.json';
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-function loadLayout(file) {
-  const reader = new FileReader();
-  reader.onload = () => {
-    applySnapshot(JSON.parse(reader.result));
-    pushState();
-  };
-  reader.readAsText(file, 'utf-8');
-}
-
-function demo() {
-  state.links = LabData.createDemoLinks();
-  $('lessonMode').value = 'demo';
-  $('faultInject').value = 'none';
-  $('teacherNote').value = '教师台已切换到标准演示拓扑。';
-  $('teacherResult').innerHTML = '<span class="good">已载入标准演示拓扑。</span>';
-  renderWorkspace();
-  score();
-  pushState();
-}
-
-function applyRouteBootstrap() {
-  $('clientId').value = `teacher-${Math.random().toString(36).slice(2, 8)}`;
-  $('serverUrl').value = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
-  $('roomCode').value = boot.defaultRoom;
-  $('connState').textContent = boot.autoConnect ? '正在自动连接服务器...' : '未连接服务器。';
 }
 
 function bindEvents() {
-  document.querySelectorAll('.mode').forEach((button) => {
-    button.onclick = () => {
-      state.mode = button.dataset.mode;
-      document.querySelectorAll('.mode').forEach((item) => item.classList.toggle('active', item === button));
-    };
-  });
-  document.querySelectorAll('.tab').forEach((button) => {
-    button.onclick = () => {
-      document.querySelectorAll('.tab').forEach((item) => item.classList.toggle('active', item === button));
-      document.querySelectorAll('.pane').forEach((pane) => pane.classList.remove('active'));
-      $(`pane-${button.dataset.pane}`).classList.add('active');
-    };
-  });
-  $('connectBtn').onclick = connect;
-  $('pushBtn').onclick = pushState;
   $('exportBoardBtn').onclick = exportBoard;
   $('themeBtn').onclick = () => {
     document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     syncThemeButton();
   };
-  $('applyTeacherBtn').onclick = () => {
-    $('teacherResult').innerHTML = '<span class="good">已应用教师设置并推送。</span>';
-    pushState();
-  };
-  $('saveLayoutBtn').onclick = saveLayout;
-  $('loadLayoutBtn').onclick = () => $('layoutFile').click();
-  $('layoutFile').onchange = (event) => {
-    if (event.target.files[0]) loadLayout(event.target.files[0]);
-  };
-  $('demoBtn').onclick = demo;
-  window.addEventListener('keydown', (event) => {
-    if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'd') {
-      event.preventDefault();
-      revealDemoButton();
-      demo();
-    }
-  });
-  window.addEventListener('resize', () => requestAnimationFrame(drawLinks));
-  window.addEventListener('mousemove', (event) => {
-    if (!state.dragging) return;
-    const device = devices.find((item) => item.id === state.dragging.id);
-    device.x = Math.max(10, Math.min(workspace.clientWidth - 190, state.dragging.origX + (event.clientX - state.dragging.startX)));
-    device.y = Math.max(30, Math.min(workspace.clientHeight - 170, state.dragging.origY + (event.clientY - state.dragging.startY)));
-    const node = workspace.querySelector(`.node[data-id="${device.id}"]`);
-    if (node) {
-      node.style.left = `${device.x}px`;
-      node.style.top = `${device.y}px`;
-      drawLinks();
-    }
-  });
-  window.addEventListener('mouseup', () => {
-    if (state.dragging) pushState();
-    state.dragging = null;
-  });
 }
 
 function bootApp() {
-  applyRouteBootstrap();
   bindEvents();
   syncThemeButton();
-  renderDeviceList();
   renderBoard();
-  renderWorkspace();
-  score();
+  renderOnlineStudents();
+  initCharts();
   if (boot.autoConnect) connect();
 }
 

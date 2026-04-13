@@ -6,7 +6,27 @@
 .field{display:grid;gap:6px;margin-bottom:10px}.field input,.field select,.field textarea{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}.actions{display:flex;gap:8px;flex-wrap:wrap}.btn{padding:9px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);color:var(--text);transition:background-color .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease}.btn:hover{border-color:rgba(21,101,192,.35);background:#edf4ff}.btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(21,101,192,.18)}.btn.active{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 8px 18px rgba(21,101,192,.22)}.btn.primary{background:var(--brand);border-color:var(--brand);color:#fff}.res{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel2)}.good{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}.uplinkSection[hidden]{display:none !important}.formHint{margin-bottom:10px;font-size:.9rem;line-height:1.55}
 .table{width:100%;border-collapse:collapse;font-size:.9rem}.table th,.table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left}.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.tab{padding:8px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel2)}.tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}.pane{display:none}.pane.active{display:block}.bottom{display:grid;grid-template-columns:1.2fr 1fr 1.25fr .8fr;gap:12px;padding:10px 12px;background:var(--rack);color:#e6eefc}.status{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:10px}.log{white-space:pre-wrap;font:12px/1.45 ui-monospace,monospace}.score{font-size:1.6rem;font-weight:700}
 .noticeCard{margin-top:8px;padding:12px 12px 12px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-left:5px solid #7b8ba7;min-height:74px}.noticeHead{display:flex;gap:12px;align-items:flex-start}.noticeIcon{width:28px;height:28px;border-radius:999px;display:grid;place-items:center;font-weight:800;font-size:.95rem;background:rgba(255,255,255,.12);color:#fff;flex:0 0 auto}.noticeTitle{font-weight:700;color:#fff;margin-bottom:4px}.noticeText{font-size:.9rem;line-height:1.55;color:#d9e4f5}.notice-info{border-left-color:#7b8ba7}.notice-info .noticeIcon{background:rgba(123,139,167,.3)}.notice-good{border-left-color:#28b06f;background:rgba(40,176,111,.1)}.notice-good .noticeIcon{background:rgba(40,176,111,.22);color:#c8ffde}.notice-warn{border-left-color:#f2bf55;background:rgba(242,191,85,.1)}.notice-warn .noticeIcon{background:rgba(242,191,85,.22);color:#fff1c2}.notice-bad{border-left-color:#ff7b72;background:rgba(255,123,114,.1)}.notice-bad .noticeIcon{background:rgba(255,123,114,.22);color:#ffe3e0}
-@media (max-width:1200px){.main{grid-template-columns:1fr}.workspace{min-width:900px}.bottom{grid-template-columns:1fr}}
+/* 在线学生横条 */
+.onlineStudentsBar{display:flex;align-items:center;gap:16px;padding:12px 20px;background:#f8fafc;border-bottom:1px solid #e2e8f0;overflow:hidden}
+.onlineStudentsScroll{flex:1;display:flex;gap:12px;overflow-x:auto;scroll-behavior:smooth}
+.onlineStudentsScroll::-webkit-scrollbar{height:6px}
+.onlineStudentsScroll::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+.onlineStudentCard{display:flex;align-items:center;gap:8px;padding:8px 16px;background:white;border:1px solid #e2e8f0;border-radius:8px;white-space:nowrap;font-size:14px;transition:all .2s}
+.onlineStudentCard:hover{border-color:#3b82f6;box-shadow:0 2px 8px rgba(59,130,246,.1)}
+.onlineIndicator{width:8px;height:8px;background:#4ade80;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.onlineStudentsCount{font-size:14px;font-weight:500;color:#64748b;white-space:nowrap}
+.emptyState{padding:20px;text-align:center;color:#94a3b8;font-size:14px}
+/* 图表面板 */
+.chartsPanel{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px;background:white;border-radius:8px;margin-bottom:20px}
+.chartContainer{border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#fafafa}
+.chartTitle{font-size:16px;font-weight:600;margin-bottom:12px;color:#1e293b}
+/* 深色主题适配 */
+[data-theme="dark"] .onlineStudentsBar{background:#1e293b;border-bottom-color:#334155}
+[data-theme="dark"] .onlineStudentCard{background:#0f172a;border-color:#334155;color:#e2e8f0}
+[data-theme="dark"] .chartContainer{background:#1e293b;border-color:#334155}
+[data-theme="dark"] .chartTitle{color:#e2e8f0}
+@media (max-width:1200px){.main{grid-template-columns:1fr}.workspace{min-width:900px}.bottom{grid-template-columns:1fr}.chartsPanel{grid-template-columns:1fr}}
 .entryShell{min-height:100vh;display:grid;place-items:center;padding:32px;background:radial-gradient(circle at top,#dce9ff 0,#eef3fa 40%,#e6edf8 100%)}
 .entryHero,.entryGrid,.entryFoot{width:min(980px,100%)}
 .entryHero{margin-bottom:20px;text-align:center}
