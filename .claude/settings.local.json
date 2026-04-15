@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit -m 'docs: 添加教师端数据监看功能完善设计文档:*)",
+      "Bash(python run_server.py)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /F /PID 24312)",
+      "Bash(powershell -Command \"Stop-Process -Id 24312 -Force\")",
+      "Bash(curl -s http://127.0.0.1:8765/teacher)",
+      "Bash(git commit -m 'feat: 教师端添加数据可视化和实时监控功能:*)",
+      "Bash(awk '{print $5}')",
+      "Bash(powershell -Command \"Stop-Process -Id 29636 -Force\")",
+      "Bash(git commit -m 'fix: 修复教师端在线学生显示功能:*)",
+      "mcp__chrome-devtools__list_pages",
+      "mcp__chrome-devtools__new_page",
+      "mcp__chrome-devtools__list_console_messages",
+      "Bash(git commit -m 'fix: 修复教师端变量初始化顺序错误:*)",
+      "mcp__chrome-devtools__navigate_page",
+      "mcp__chrome-devtools__get_console_message",
+      "Bash(python -m http.server 8080)",
+      "Bash(curl -s http://localhost:8765/teacher)",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(xargs -r taskkill /F /PID)",
+      "Bash(findstr :8765)",
+      "Bash(taskkill /F /PID 27796)",
+      "Bash(taskkill //F //PID 27796)",
+      "Bash(curl -L -o client/assets/echarts.min.js https://registry.npmmirror.com/echarts/5.4.3/files/dist/echarts.min.js)"
+    ]
+  }
+}

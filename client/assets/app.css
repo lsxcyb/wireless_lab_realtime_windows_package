@@ -17,6 +17,17 @@
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 .onlineStudentsCount{font-size:14px;font-weight:500;color:#64748b;white-space:nowrap}
 .emptyState{padding:20px;text-align:center;color:#94a3b8;font-size:14px}
+/* 统计卡片 */
+.statsCards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px;background:white;border-radius:8px;margin-bottom:20px}
+.statCard{padding:20px;border-radius:8px;background:#f8fafc;border:2px solid #e2e8f0;text-align:center}
+.statCard.good{border-color:#4ade80;background:#f0fdf4}
+.statCard.warn{border-color:#fbbf24;background:#fffbeb}
+.statCard.bad{border-color:#f87171;background:#fef2f2}
+.statLabel{font-size:14px;color:#64748b;margin-bottom:8px}
+.statValue{font-size:32px;font-weight:700;color:#1e293b}
+.statCard.good .statValue{color:#16a34a}
+.statCard.warn .statValue{color:#d97706}
+.statCard.bad .statValue{color:#dc2626}
 /* 图表面板 */
 .chartsPanel{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding:20px;background:white;border-radius:8px;margin-bottom:20px}
 .chartContainer{border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#fafafa}
@@ -26,6 +37,13 @@
 [data-theme="dark"] .onlineStudentCard{background:#0f172a;border-color:#334155;color:#e2e8f0}
 [data-theme="dark"] .chartContainer{background:#1e293b;border-color:#334155}
 [data-theme="dark"] .chartTitle{color:#e2e8f0}
+[data-theme="dark"] .statsCards{background:#1e293b}
+[data-theme="dark"] .statCard{background:#0f172a;border-color:#334155}
+[data-theme="dark"] .statLabel{color:#94a3b8}
+[data-theme="dark"] .statValue{color:#e2e8f0}
+[data-theme="dark"] .statCard.good{border-color:#22c55e;background:#0f1f14}
+[data-theme="dark"] .statCard.warn{border-color:#eab308;background:#1f1d0f}
+[data-theme="dark"] .statCard.bad{border-color:#ef4444;background:#1f0f0f}
 @media (max-width:1200px){.main{grid-template-columns:1fr}.workspace{min-width:900px}.bottom{grid-template-columns:1fr}.chartsPanel{grid-template-columns:1fr}}
 .entryShell{min-height:100vh;display:grid;place-items:center;padding:32px;background:radial-gradient(circle at top,#dce9ff 0,#eef3fa 40%,#e6edf8 100%)}
 .entryHero,.entryGrid,.entryFoot{width:min(980px,100%)}

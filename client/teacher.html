@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>无线网络虚拟实验室 教师台</title>
 <link rel="stylesheet" href="/client/assets/app.css?v=20260413b" />
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+<script src="/client/assets/echarts.min.js"></script>
 </head>
 <body data-route-role="__ROUTE_ROLE__" data-auto-connect="__AUTO_CONNECT__" data-default-room="__DEFAULT_ROOM__">
 <div class="shell teacherShell" style="--teacher-sidebar:0">
@@ -23,6 +23,25 @@
   </div>
   <div class="onlineStudentsCount" id="onlineStudentsCount">在线学生：0 人</div>
 </div>
+<!-- 统计卡片 -->
+<section class="statsCards">
+  <div class="statCard">
+    <div class="statLabel">提交总数</div>
+    <div class="statValue" id="statTotal">0</div>
+  </div>
+  <div class="statCard good">
+    <div class="statLabel">通过</div>
+    <div class="statValue" id="statPass">0</div>
+  </div>
+  <div class="statCard warn">
+    <div class="statLabel">DNS异常</div>
+    <div class="statValue" id="statWarn">0</div>
+  </div>
+  <div class="statCard bad">
+    <div class="statLabel">未通过</div>
+    <div class="statValue" id="statFail">0</div>
+  </div>
+</section>
 <!-- 图表面板 -->
 <section class="chartsPanel">
   <div class="chartContainer">

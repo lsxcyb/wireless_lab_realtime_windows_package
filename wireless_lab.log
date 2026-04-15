@@ -1,0 +1,49 @@
+nohup: 忽略输入
+[info] 使用解释器: python3.12
+[info] 使用虚拟环境: /home/wireless_lab_realtime_windows_package/.venv
+Requirement already satisfied: pip in ./.venv/lib/python3.12/site-packages (26.0.1)
+Requirement already satisfied: fastapi in ./.venv/lib/python3.12/site-packages (from -r requirements.txt (line 1)) (0.135.3)
+Requirement already satisfied: uvicorn[standard] in ./.venv/lib/python3.12/site-packages (from -r requirements.txt (line 2)) (0.44.0)
+Requirement already satisfied: starlette>=0.46.0 in ./.venv/lib/python3.12/site-packages (from fastapi->-r requirements.txt (line 1)) (1.0.0)
+Requirement already satisfied: pydantic>=2.9.0 in ./.venv/lib/python3.12/site-packages (from fastapi->-r requirements.txt (line 1)) (2.12.5)
+Requirement already satisfied: typing-extensions>=4.8.0 in ./.venv/lib/python3.12/site-packages (from fastapi->-r requirements.txt (line 1)) (4.15.0)
+Requirement already satisfied: typing-inspection>=0.4.2 in ./.venv/lib/python3.12/site-packages (from fastapi->-r requirements.txt (line 1)) (0.4.2)
+Requirement already satisfied: annotated-doc>=0.0.2 in ./.venv/lib/python3.12/site-packages (from fastapi->-r requirements.txt (line 1)) (0.0.4)
+Requirement already satisfied: click>=7.0 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (8.3.2)
+Requirement already satisfied: h11>=0.8 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (0.16.0)
+Requirement already satisfied: httptools>=0.6.3 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (0.7.1)
+Requirement already satisfied: python-dotenv>=0.13 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (1.2.2)
+Requirement already satisfied: pyyaml>=5.1 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (6.0.3)
+Requirement already satisfied: uvloop>=0.15.1 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (0.22.1)
+Requirement already satisfied: watchfiles>=0.20 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (1.1.1)
+Requirement already satisfied: websockets>=10.4 in ./.venv/lib/python3.12/site-packages (from uvicorn[standard]->-r requirements.txt (line 2)) (16.0)
+Requirement already satisfied: annotated-types>=0.6.0 in ./.venv/lib/python3.12/site-packages (from pydantic>=2.9.0->fastapi->-r requirements.txt (line 1)) (0.7.0)
+Requirement already satisfied: pydantic-core==2.41.5 in ./.venv/lib/python3.12/site-packages (from pydantic>=2.9.0->fastapi->-r requirements.txt (line 1)) (2.41.5)
+Requirement already satisfied: anyio<5,>=3.6.2 in ./.venv/lib/python3.12/site-packages (from starlette>=0.46.0->fastapi->-r requirements.txt (line 1)) (4.13.0)
+Requirement already satisfied: idna>=2.8 in ./.venv/lib/python3.12/site-packages (from anyio<5,>=3.6.2->starlette>=0.46.0->fastapi->-r requirements.txt (line 1)) (3.11)
+[info] 学生端(本机): http://127.0.0.1:8765/student
+[info] 教师端(本机): http://127.0.0.1:8765/teacher
+INFO:     Started server process [61423]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8765 (Press CTRL+C to quit)
+gio: http://127.0.0.1:8765/student: Operation not supported
+[info] Open student page: http://127.0.0.1:8765/student
+[info] Open teacher page: http://127.0.0.1:8765/teacher
+INFO:     172.16.32.21:50315 - "GET / HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50315 - "GET /client/assets/app.css HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50315 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     172.16.32.21:50315 - "GET /student HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50315 - "GET /client/assets/app.css?v=20260413a HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50316 - "GET /client/assets/link-utils.js HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50320 - "GET /client/assets/student-app.js?v=20260413a HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50319 - "GET /client/assets/lab-data.js HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50321 - "WebSocket /ws/classroom-101/student/student-mawua4" [accepted]
+INFO:     connection open
+INFO:     172.16.32.21:50326 - "GET /client/assets/devices/modem.svg HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50354 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     172.16.32.21:50415 - "GET /client/assets/devices/pc.svg HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50417 - "GET /client/assets/devices/splitter.svg HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50416 - "GET /client/assets/devices/router.svg HTTP/1.1" 200 OK
+INFO:     172.16.32.21:50418 - "GET /client/assets/devices/tablet.svg HTTP/1.1" 200 OK
+INFO:     connection closed

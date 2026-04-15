@@ -129,7 +129,7 @@ async def websocket_endpoint(websocket: WebSocket, room: str, role: str, client_
         'payload': rooms[room],
         'meta': {'role': initial_role, 'client_id': client_id, 'scope': 'teacher_shared'}
     }, ensure_ascii=False))
-    await broadcast(room, {'type': 'presence', 'room': room, 'payload': {'client_id': client_id, 'role': role, 'online': True}})
+    # 不再自动发送 presence 消息，让客户端自己发送完整的学生信息
     try:
         while True:
             data = await websocket.receive_text()
