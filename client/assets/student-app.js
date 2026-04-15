@@ -1,10 +1,22 @@
 const photos = LabData.photos;
-const allDevices = LabData.createDevices();
+const deviceTemplates = LabData.createDevices();
 const linkGroups = LabData.linkGroups;
 const linkRules = LinkUtils.buildLinkRules(linkGroups);
 const requiredLinkGroupCount = linkGroups.filter((group) => group.required !== false).length;
 const baseNetworks = [...LabData.baseNetworks];
-const state = { mode: 'place', selectedPort: null, links: [], config: null, joined: false, socket: null, dragging: null, hoveredLink: null, placedDeviceIds: [], paletteDragId: null };
+const state = {
+  mode: 'place',
+  selectedPort: null,
+  links: [],
+  config: null,
+  joined: false,
+  socket: null,
+  dragging: null,
+  hoveredLink: null,
+  placedDevices: [],
+  instanceCounters: {},
+  paletteDragId: null,
+};
 const boot = { autoConnect: document.body.dataset.autoConnect === 'true', defaultRoom: document.body.dataset.defaultRoom || 'classroom-101' };
 const $ = (id) => document.getElementById(id);
 const workspace = $('workspace');
@@ -20,9 +32,69 @@ function formatEndpoint(endpoint) { return LinkUtils.formatEndpointLabel(endpoin
 function getLinkIssue(a, b) { return LinkUtils.getLinkIssue(a, b, linkRules, state.links); }
 function getMissingRequiredGroups() { return LinkUtils.getMissingRequiredGroups(state.links, linkRules); }
 function getLinkByEndpoint(endpoint) { return state.links.find(([a, b]) => a === endpoint || b === endpoint) || null; }
-function getDeviceById(id) { return allDevices.find((device) => device.id === id) || null; }
-function getPlacedDevices() { return state.placedDeviceIds.map((id) => getDeviceById(id)).filter(Boolean); }
-function isDevicePlaced(id) { return state.placedDeviceIds.includes(id); }
+function getLinksByEndpoint(endpoint) { return state.links.filter(([a, b]) => a === endpoint || b === endpoint); }
+function getDeviceTemplate(id) { return deviceTemplates.find((device) => device.id === id) || null; }
+function getDeviceById(id) { return state.placedDevices.find((device) => device.id === id) || null; }
+function getPlacedDevices() { return [...state.placedDevices]; }
+function getPlacedCount(baseId) { return state.placedDevices.filter((device) => device.baseId === baseId).length; }
+function isDevicePlaced(id) { return getPlacedCount(id) > 0; }
+function getBaseIdFromDeviceId(deviceId) {
+  if (getDeviceTemplate(deviceId)) return deviceId;
+  const match = String(deviceId || '').match(/^(.*)-(\d+)$/);
+  if (match && getDeviceTemplate(match[1])) return match[1];
+  return null;
+}
+function getInstanceIndexFromId(deviceId) {
+  const match = String(deviceId || '').match(/^(.*)-(\d+)$/);
+  if (!match) return null;
+  return Number(match[2]);
+}
+function syncInstanceCounter(baseId, index) {
+  if (!index) return;
+  state.instanceCounters[baseId] = Math.max(state.instanceCounters[baseId] || 0, index);
+}
+function nextInstanceIndex(baseId) {
+  const next = (state.instanceCounters[baseId] || 0) + 1;
+  state.instanceCounters[baseId] = next;
+  return next;
+}
+function createDeviceInstance(baseId, x, y, options = {}) {
+  const template = getDeviceTemplate(baseId);
+  if (!template) return null;
+  let instanceIndex = null;
+  if (template.multiInstance) {
+    instanceIndex = options.instanceIndex || getInstanceIndexFromId(options.id) || nextInstanceIndex(baseId);
+    syncInstanceCounter(baseId, instanceIndex);
+  }
+  const id = options.id || (template.multiInstance ? `${baseId}-${instanceIndex}` : baseId);
+  return {
+    id,
+    baseId,
+    name: template.multiInstance ? `${template.name} ${instanceIndex}` : template.name,
+    type: template.type,
+    x: typeof x === 'number' ? x : template.x,
+    y: typeof y === 'number' ? y : template.y,
+    ports: [...template.ports],
+    multiInstance: template.multiInstance === true,
+    instanceIndex,
+  };
+}
+function createDefaultDeviceSet(baseIds) {
+  const nextDevices = [];
+  state.instanceCounters = {};
+  baseIds.forEach((baseId) => {
+    const template = getDeviceTemplate(baseId);
+    if (!template) return;
+    const device = createDeviceInstance(baseId, template.x, template.y);
+    if (device) nextDevices.push(device);
+  });
+  return nextDevices;
+}
+function remapImportedEndpoint(endpoint, legacyMap) {
+  const [deviceId, port = ''] = String(endpoint || '').split(':');
+  const mappedDeviceId = legacyMap[deviceId] || deviceId;
+  return port ? `${mappedDeviceId}:${port}` : mappedDeviceId;
+}
 function isDeviceAreaPoint(clientX, clientY) {
   const list = $('deviceList');
   const rect = list.getBoundingClientRect();
@@ -35,6 +107,20 @@ function clearRecycleHighlight() {
   $('deviceList').classList.remove('recycle-ready');
 }
 
+function syncWorkspaceHeight() {
+  const main = document.querySelector('.main');
+  const leftPanel = document.querySelector('.main > aside:first-of-type');
+  const centerSection = document.querySelector('.main > section');
+  const centerToolbar = centerSection ? centerSection.querySelector('.panel.pad') : null;
+  if (!main || !leftPanel || !centerSection || !centerToolbar || !workspace) return;
+  const leftHeight = Math.ceil(leftPanel.getBoundingClientRect().height);
+  const toolbarHeight = Math.ceil(centerToolbar.getBoundingClientRect().height);
+  const sectionHeight = Math.max(leftHeight, toolbarHeight + 280);
+  const workspaceHeight = Math.max(360, sectionHeight - toolbarHeight - 10);
+  centerSection.style.height = `${sectionHeight}px`;
+  workspace.style.minHeight = `${workspaceHeight}px`;
+}
+
 function clampDevicePosition(x, y) {
   return {
     x: Math.max(10, Math.min(workspace.clientWidth - 190, x)),
@@ -42,13 +128,14 @@ function clampDevicePosition(x, y) {
   };
 }
 
-function placeDevice(id, x, y) {
-  const device = getDeviceById(id);
-  if (!device || isDevicePlaced(id)) return false;
+function placeDevice(baseId, x, y) {
+  const template = getDeviceTemplate(baseId);
+  if (!template) return false;
+  if (!template.multiInstance && isDevicePlaced(baseId)) return false;
   const next = clampDevicePosition(x, y);
-  device.x = next.x;
-  device.y = next.y;
-  state.placedDeviceIds.push(id);
+  const device = createDeviceInstance(baseId, next.x, next.y);
+  if (!device) return false;
+  state.placedDevices.push(device);
   state.selectedPort = null;
   log(`[device] 已放入 ${device.name}`);
   renderDeviceList();
@@ -58,14 +145,14 @@ function placeDevice(id, x, y) {
 }
 
 function removeDevice(id) {
-  if (!isDevicePlaced(id)) return false;
   const device = getDeviceById(id);
-  state.placedDeviceIds = state.placedDeviceIds.filter((item) => item !== id);
+  if (!device) return false;
+  state.placedDevices = state.placedDevices.filter((item) => item.id !== id);
   state.links = state.links.filter(([a, b]) => !a.startsWith(`${id}:`) && !b.startsWith(`${id}:`));
   if (state.selectedPort && state.selectedPort.startsWith(`${id}:`)) state.selectedPort = null;
   state.hoveredLink = null;
   clearRecycleHighlight();
-  log(`[device] 已回收 ${device ? device.name : id}`);
+  log(`[device] 已回收 ${device.name}`);
   renderDeviceList();
   renderWorkspace();
   score();
@@ -124,7 +211,7 @@ function revealDemoButton() {
 }
 
 function updateLinkNotice() {
-  if (!state.placedDeviceIds.length) return setLinkNotice({ tone: 'info', title: '等待摆放设备', detail: '请先从左侧设备区拖入需要的设备，再进行连线。', icon: 'i' });
+  if (!state.placedDevices.length) return setLinkNotice({ tone: 'info', title: '等待摆放设备', detail: '请先从左侧设备区拖入需要的设备，再进行连线。', icon: 'i' });
   if (state.hoveredLink) {
     const hovered = state.links.find(([a, b]) => normalizeLinkKey(a, b) === state.hoveredLink);
     if (hovered) {
@@ -133,7 +220,7 @@ function updateLinkNotice() {
       return setLinkNotice({ tone: 'good', title: '连线正确', detail: `${formatEndpoint(hovered[0])} ↔ ${formatEndpoint(hovered[1])}`, icon: '✓' });
     }
   }
-  if (state.selectedPort) return setLinkNotice({ tone: 'warn', title: '等待完成连线', detail: `已选择 ${formatEndpoint(state.selectedPort)}，请继续选择另一端口；点击已连线端口可直接删除旧连线。`, icon: '…' });
+  if (state.selectedPort) return setLinkNotice({ tone: 'warn', title: '等待完成连线', detail: `已选择 ${formatEndpoint(state.selectedPort)}，请继续选择另一端口；点击已连线端口、或悬停后点连线本身，都可删除旧连线。`, icon: '…' });
   const invalidLink = state.links.find(([a, b]) => !!getLinkIssue(a, b));
   if (invalidLink) return setLinkNotice({ tone: 'bad', title: '存在错误连线', detail: getLinkIssue(invalidLink[0], invalidLink[1]), icon: '!' });
   const missingGroups = getMissingRequiredGroups();
@@ -169,14 +256,15 @@ function refreshSSIDs(selectNew = true) {
 function renderDeviceList() {
   const host = $('deviceList');
   host.innerHTML = '';
-  allDevices.forEach((device) => {
-    const placed = isDevicePlaced(device.id);
+  deviceTemplates.forEach((device) => {
+    const count = getPlacedCount(device.id);
+    const placed = !device.multiInstance && count > 0;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `box deviceItem${placed ? ' placed' : ''}`;
     button.draggable = !placed;
     button.setAttribute('aria-pressed', String(placed));
-    button.innerHTML = `<div class="deviceThumb"><img src="${photos[device.id]}" alt="${device.name}"><span class="deviceThumbFallback">${device.name}</span></div><div class="deviceItemBody"><div class="deviceItemName">${device.name}</div><div class="small">${device.type}</div><div class="small">${placed ? '已在连接区' : '拖到右侧连接区'}</div></div>`;
+    button.innerHTML = `<div class="deviceThumb"><img src="${photos[device.id]}" alt="${device.name}"><span class="deviceThumbFallback">${device.name}</span></div><div class="deviceItemBody"><div class="deviceItemName">${device.name}</div><div class="small">${device.type}</div><div class="small">${device.multiInstance ? (count ? `已放入 ${count} 台，可继续拖入` : '拖到右侧连接区') : (placed ? '已在连接区' : '拖到右侧连接区')}</div></div>`;
     button.ondragstart = (event) => {
       if (placed) return;
       state.paletteDragId = device.id;
@@ -195,6 +283,7 @@ function renderDeviceList() {
     img.onerror = () => { img.style.display = 'none'; fallback.style.display = 'grid'; };
     host.appendChild(button);
   });
+  requestAnimationFrame(syncWorkspaceHeight);
 }
 
 function syncHoveredPorts() { document.querySelectorAll('.port').forEach((el) => el.classList.toggle('link-hover', !!state.hoveredLink && state.hoveredLink.includes(el.dataset.key))); }
@@ -205,6 +294,7 @@ function enableDrag(node, id) {
   const handle = node.querySelector('.dragHandle');
   const start = (event) => {
     const device = getDeviceById(id);
+    if (!device) return;
     state.dragging = { id, startX: event.touches ? event.touches[0].clientX : event.clientX, startY: event.touches ? event.touches[0].clientY : event.clientY, origX: device.x, origY: device.y };
     event.preventDefault();
   };
@@ -243,7 +333,7 @@ function drawLinks() {
 
 function renderWorkspace() {
   [...workspace.querySelectorAll('.node, .workspaceEmpty')].forEach((node) => node.remove());
-  if (!state.placedDeviceIds.length) {
+  if (!state.placedDevices.length) {
     const empty = document.createElement('div');
     empty.className = 'workspaceEmpty';
     empty.innerHTML = '<strong>连接区当前没有设备</strong><span>从左侧设备区拖动设备到这里开始搭建拓扑。</span>';
@@ -255,16 +345,17 @@ function renderWorkspace() {
     node.dataset.id = device.id;
     node.style.left = `${device.x}px`;
     node.style.top = `${device.y}px`;
-    node.innerHTML = `<div class="led ${state.links.some((link) => link[0].startsWith(`${device.id}:`) || link[1].startsWith(`${device.id}:`)) ? 'on' : ''}"></div><div class="nodeHead"><div><div class="iconWrap"><img src="${photos[device.id]}" alt="${device.name}"><div class="iconFallback">${device.name}</div></div><div class="imgTag">${device.name}</div></div><div class="nodeTitleWrap"><div class="nodeTitle">${device.name}</div><div class="meta">${device.type}</div></div></div><div class="ports"></div><div class="dragHandle">拖动设备位置</div><div class="linkHint">提示：点击已连线端口、或悬停后点连线本身，都可删除；错误连线会立即标红</div>`;
+    node.innerHTML = `<div class="led ${state.links.some((link) => link[0].startsWith(`${device.id}:`) || link[1].startsWith(`${device.id}:`)) ? 'on' : ''}"></div><div class="nodeHead"><div><div class="iconWrap"><img src="${photos[device.baseId]}" alt="${device.name}"><div class="iconFallback">${device.name}</div></div><div class="imgTag">${device.name}</div></div><div class="nodeTitleWrap"><div class="nodeTitle">${device.name}</div><div class="meta">${device.type}</div></div></div><div class="ports"></div><div class="dragHandle">拖动设备位置</div><div class="linkHint">提示：点击已连线端口、或悬停后点连线本身，都可删除；错误连线会立即标红</div>`;
     const img = node.querySelector('img');
     const fallback = node.querySelector('.iconFallback');
     img.onerror = () => { img.style.display = 'none'; fallback.style.display = 'block'; };
     const ports = node.querySelector('.ports');
     device.ports.forEach((port) => {
       const key = `${device.id}:${port}`;
-      const relatedLinks = state.links.filter(([a, b]) => a === key || b === key);
+      const relatedLinks = getLinksByEndpoint(key);
+      const sharedEndpoint = LinkUtils.isEndpointShared(key);
       const classes = ['port'];
-      if (state.mode === 'connect' && state.selectedPort !== key && relatedLinks.length === 0) classes.push('connectable');
+      if (state.mode === 'connect' && state.selectedPort !== key && (relatedLinks.length === 0 || sharedEndpoint)) classes.push('connectable');
       if (relatedLinks.length > 0) classes.push('connected');
       if (relatedLinks.some(([a, b]) => !!getLinkIssue(a, b))) classes.push('invalid-link');
       if (state.selectedPort === key) classes.push('active');
@@ -274,17 +365,18 @@ function renderWorkspace() {
       button.type = 'button';
       button.className = classes.join(' ');
       button.dataset.key = key;
-      button.innerHTML = `<span class="portLabel">${port}</span>${relatedLinks.length > 0 ? '<span class="portBadge">已连</span>' : ''}`;
+      button.innerHTML = `<span class="portLabel">${port}</span>${relatedLinks.length > 0 ? `<span class="portBadge">${sharedEndpoint ? `已连 ${relatedLinks.length}` : '已连'}</span>` : ''}`;
       button.setAttribute('aria-pressed', String(state.selectedPort === key));
       button.onclick = (event) => {
         event.stopPropagation();
-        if (state.mode === 'connect' && relatedLinks.length > 0) {
+        if (state.mode === 'connect' && relatedLinks.length > 0 && !sharedEndpoint) {
           deleteLink(normalizeLinkKey(relatedLinks[0][0], relatedLinks[0][1]));
           return;
         }
         portClick(button.dataset.key);
       };
       button.oncontextmenu = (event) => {
+        if (sharedEndpoint) return;
         const existingLink = getLinkByEndpoint(button.dataset.key);
         if (!existingLink) return;
         event.preventDefault();
@@ -292,7 +384,7 @@ function renderWorkspace() {
         deleteLink(normalizeLinkKey(existingLink[0], existingLink[1]));
       };
       slot.appendChild(button);
-      if (relatedLinks.length > 0) {
+      if (relatedLinks.length > 0 && !sharedEndpoint) {
         const deleteButton = document.createElement('button');
         deleteButton.type = 'button';
         deleteButton.className = 'portDelete';
@@ -313,6 +405,7 @@ function renderWorkspace() {
     workspace.appendChild(node);
   });
   requestAnimationFrame(drawLinks);
+  requestAnimationFrame(syncWorkspaceHeight);
   updateLinkNotice();
 }
 
@@ -329,8 +422,9 @@ function deleteLink(linkKey) {
 function portClick(key) {
   if (state.mode !== 'connect') return;
   const existingLink = getLinkByEndpoint(key);
+  const sharedEndpoint = LinkUtils.isEndpointShared(key);
   if (!state.selectedPort) {
-    if (existingLink) {
+    if (existingLink && !sharedEndpoint) {
       deleteLink(normalizeLinkKey(existingLink[0], existingLink[1]));
       return;
     }
@@ -338,7 +432,7 @@ function portClick(key) {
     return renderWorkspace();
   }
   if (state.selectedPort === key) { state.selectedPort = null; return renderWorkspace(); }
-  if (existingLink) {
+  if (existingLink && !sharedEndpoint) {
     deleteLink(normalizeLinkKey(existingLink[0], existingLink[1]));
     return;
   }
@@ -450,16 +544,37 @@ function submitResult() {
   log(`[board] 已提交结果 ${row.className}/${row.groupName}/${row.studentName}`);
 }
 
-function snapshot() { return { topology: { devices: getPlacedDevices().map((device) => ({ id: device.id, x: device.x, y: device.y })), links: state.links }, config: state.config || {} }; }
+function snapshot() {
+  return {
+    topology: {
+      devices: getPlacedDevices().map((device) => ({ id: device.id, baseId: device.baseId, x: device.x, y: device.y, instanceIndex: device.instanceIndex || null })),
+      links: state.links,
+    },
+    config: state.config || {},
+  };
+}
 
 function applySnapshot(snapshotState) {
+  state.selectedPort = null;
+  state.hoveredLink = null;
+  state.placedDevices = [];
+  state.instanceCounters = {};
+  state.links = [];
+  const legacyMap = {};
   if (snapshotState.topology && Array.isArray(snapshotState.topology.devices)) {
-    state.placedDeviceIds = snapshotState.topology.devices.map((position) => position.id);
     snapshotState.topology.devices.forEach((position) => {
-      const device = getDeviceById(position.id);
-      if (device) { device.x = position.x; device.y = position.y; }
+      const baseId = position.baseId || getBaseIdFromDeviceId(position.id);
+      const template = baseId ? getDeviceTemplate(baseId) : null;
+      if (!template) return;
+      const instanceIndex = template.multiInstance ? (Number(position.instanceIndex) || getInstanceIndexFromId(position.id) || 1) : null;
+      const id = template.multiInstance ? (position.baseId ? (position.id || `${baseId}-${instanceIndex}`) : `${baseId}-${instanceIndex}`) : baseId;
+      if (!position.baseId && template.multiInstance) legacyMap[position.id] = id;
+      const device = createDeviceInstance(baseId, position.x, position.y, { id, instanceIndex });
+      if (device) state.placedDevices.push(device);
     });
-    state.links = snapshotState.topology.links || [];
+    state.links = Array.isArray(snapshotState.topology.links)
+      ? snapshotState.topology.links.map(([a, b]) => [remapImportedEndpoint(a, legacyMap), remapImportedEndpoint(b, legacyMap)])
+      : [];
   }
   if (snapshotState.config) {
     state.config = snapshotState.config;
@@ -480,6 +595,7 @@ function applySnapshot(snapshotState) {
   renderDeviceList();
   renderWorkspace();
   score();
+  updateSubmitAvailability();
 }
 
 function wsUrl() { return `${$('serverUrl').value.replace(/\/$/, '')}/${$('roomCode').value}/${$('role').value}/${$('clientId').value}`; }
@@ -524,7 +640,33 @@ function connect() {
 
 function saveLayout() { const blob = new Blob([JSON.stringify(snapshot(), null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'student_topology.json'; a.click(); URL.revokeObjectURL(a.href); }
 function loadLayout(file) { const reader = new FileReader(); reader.onload = () => applySnapshot(JSON.parse(reader.result)); reader.readAsText(file, 'utf-8'); }
-function demo() { state.placedDeviceIds = allDevices.map((device) => device.id); state.links = LabData.createDemoLinks(); $('uplinkMode').value = 'pppoe'; syncUplinkModeForm(); $('pppoeUser').value = 'school_classroom'; $('pppoePwd').value = 'Class@2026'; $('wanIp').value = '192.168.1.2'; $('wanMask').value = '255.255.255.0'; $('wanGateway').value = '192.168.1.1'; $('ssid').value = 'SmartClass-101'; $('wifiPwd').value = 'ClassNet2026'; $('dnsServer').value = '8.8.8.8'; $('dhcpStart').value = '192.168.1.100'; $('dhcpEnd').value = '192.168.1.150'; saveConfig(); $('joinPwd').value = 'ClassNet2026'; joinWifi(); runTest(); renderDeviceList(); renderWorkspace(); }
+function demo() {
+  state.placedDevices = createDefaultDeviceSet(['pc', 'router', 'modem', 'splitter', 'tablet']);
+  state.links = [
+    ['pc-1:NIC', 'router:LAN1'],
+    ['router:WAN', 'modem:LAN1'],
+    ['modem:光口', 'splitter:PON'],
+    ['tablet-1:WiFi', 'router:WLAN'],
+  ];
+  $('uplinkMode').value = 'pppoe';
+  syncUplinkModeForm();
+  $('pppoeUser').value = 'school_classroom';
+  $('pppoePwd').value = 'Class@2026';
+  $('wanIp').value = '192.168.1.2';
+  $('wanMask').value = '255.255.255.0';
+  $('wanGateway').value = '192.168.1.1';
+  $('ssid').value = 'SmartClass-101';
+  $('wifiPwd').value = 'ClassNet2026';
+  $('dnsServer').value = '8.8.8.8';
+  $('dhcpStart').value = '192.168.1.100';
+  $('dhcpEnd').value = '192.168.1.150';
+  saveConfig();
+  $('joinPwd').value = 'ClassNet2026';
+  joinWifi();
+  runTest();
+  renderDeviceList();
+  renderWorkspace();
+}
 
 function applyRouteBootstrap() { $('clientId').value = `student-${Math.random().toString(36).slice(2, 8)}`; $('serverUrl').value = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`; $('roomCode').value = boot.defaultRoom; $('connState').textContent = boot.autoConnect ? '正在自动连接服务器...' : '未连接服务器。'; }
 
@@ -555,13 +697,13 @@ function bindEvents() {
     if (event.target === workspace) workspace.classList.remove('drag-over');
   });
   workspace.addEventListener('drop', (event) => {
-    const deviceId = event.dataTransfer?.getData('text/plain') || state.paletteDragId;
+    const baseId = event.dataTransfer?.getData('text/plain') || state.paletteDragId;
     workspace.classList.remove('drag-over');
     state.paletteDragId = null;
-    if (!deviceId) return;
+    if (!baseId) return;
     event.preventDefault();
     const rect = workspace.getBoundingClientRect();
-    placeDevice(deviceId, event.clientX - rect.left - 86, event.clientY - rect.top - 48);
+    placeDevice(baseId, event.clientX - rect.left - 86, event.clientY - rect.top - 48);
   });
   window.addEventListener('keydown', (event) => {
     if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'd') {
@@ -570,11 +712,12 @@ function bindEvents() {
       demo();
     }
   });
-  window.addEventListener('resize', () => requestAnimationFrame(drawLinks));
+  window.addEventListener('resize', () => { requestAnimationFrame(syncWorkspaceHeight); requestAnimationFrame(drawLinks); });
   window.addEventListener('mousemove', (event) => {
     if (!state.dragging) return;
     const device = getDeviceById(state.dragging.id);
-    const next = clampDevicePosition(state.dragging.origX + ((event.touches ? event.touches[0].clientX : event.clientX) - state.dragging.startX), state.dragging.origY + ((event.touches ? event.touches[0].clientY : event.clientY) - state.dragging.startY));
+    if (!device) return;
+    const next = clampDevicePosition(state.dragging.origX + (event.clientX - state.dragging.startX), state.dragging.origY + (event.clientY - state.dragging.startY));
     device.x = next.x;
     device.y = next.y;
     updateRecycleHighlight(event.clientX, event.clientY);
@@ -593,6 +736,7 @@ function bindEvents() {
   window.addEventListener('touchmove', (event) => {
     if (!state.dragging) return;
     const device = getDeviceById(state.dragging.id);
+    if (!device) return;
     const next = clampDevicePosition(state.dragging.origX + (event.touches[0].clientX - state.dragging.startX), state.dragging.origY + (event.touches[0].clientY - state.dragging.startY));
     device.x = next.x;
     device.y = next.y;
@@ -612,6 +756,18 @@ function bindEvents() {
   });
 }
 
-function bootApp() { applyRouteBootstrap(); bindEvents(); syncThemeButton(); syncUplinkModeForm(); refreshSSIDs(false); renderDeviceList(); renderWorkspace(); score(); updateSubmitAvailability(); if (boot.autoConnect) connect(); }
+function bootApp() {
+  applyRouteBootstrap();
+  bindEvents();
+  syncThemeButton();
+  syncUplinkModeForm();
+  refreshSSIDs(false);
+  renderDeviceList();
+  renderWorkspace();
+  syncWorkspaceHeight();
+  score();
+  updateSubmitAvailability();
+  if (boot.autoConnect) connect();
+}
 
 bootApp();

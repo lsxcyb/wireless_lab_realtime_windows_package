@@ -7,6 +7,16 @@
     root.LinkUtils = api;
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  const multiInstanceBaseIds = new Set(['pc', 'tablet']);
+  const sharedEndpoints = new Set(['router:WLAN']);
+  const deviceLabels = {
+    pc: '电脑',
+    router: '无线路由器',
+    modem: '光猫',
+    splitter: '分光器',
+    tablet: '学生平板',
+  };
+
   function normalizeLinkKey(a, b) {
     return [a, b].slice().sort().join('|');
   }
@@ -15,23 +25,40 @@
     return links.filter(([a, b]) => normalizeLinkKey(a, b) !== linkKey);
   }
 
-  function formatEndpointLabel(endpoint) {
-    const labels = {
-      'pc:NIC': '电脑 NIC',
-      'router:WAN': '无线路由器 WAN',
-      'router:LAN1': '无线路由器 LAN1',
-      'router:LAN2': '无线路由器 LAN2',
-      'router:WLAN': '无线路由器 WLAN',
-      'modem:LAN1': '光猫 LAN1',
-      'modem:LAN2': '光猫 LAN2',
-      'modem:LAN4': '光猫 LAN4',
-      'modem:ITV': '光猫 ITV',
-      'modem:光口': '光猫 光口',
-      'splitter:PON': '分光器 PON',
-      'tablet:WiFi': '学生平板 WiFi',
-    };
+  function splitEndpoint(endpoint) {
+    const [deviceId, port = ''] = String(endpoint || '').split(':');
+    return { deviceId, port };
+  }
 
-    return labels[endpoint] || endpoint;
+  function getBaseDeviceId(deviceId) {
+    const match = String(deviceId || '').match(/^(.*)-(\d+)$/);
+    if (!match) return String(deviceId || '');
+    return multiInstanceBaseIds.has(match[1]) ? match[1] : String(deviceId || '');
+  }
+
+  function getInstanceIndex(deviceId) {
+    const match = String(deviceId || '').match(/^(.*)-(\d+)$/);
+    if (!match || !multiInstanceBaseIds.has(match[1])) return null;
+    return Number(match[2]);
+  }
+
+  function normalizeEndpoint(endpoint) {
+    const { deviceId, port } = splitEndpoint(endpoint);
+    const baseId = getBaseDeviceId(deviceId);
+    return port ? `${baseId}:${port}` : baseId;
+  }
+
+  function isEndpointShared(endpoint) {
+    return sharedEndpoints.has(normalizeEndpoint(endpoint));
+  }
+
+  function formatEndpointLabel(endpoint) {
+    const { deviceId, port } = splitEndpoint(endpoint);
+    const baseId = getBaseDeviceId(deviceId);
+    const label = deviceLabels[baseId] || deviceId;
+    const instanceIndex = getInstanceIndex(deviceId);
+    const deviceLabel = instanceIndex ? `${label} ${instanceIndex}` : label;
+    return port ? `${deviceLabel} ${port}` : deviceLabel;
   }
 
   function formatEndpointList(endpoints) {
@@ -52,7 +79,7 @@
       id: group.id,
       label: group.label,
       required: group.required !== false,
-      pairs: group.pairs.map(([a, b]) => [a, b]),
+      pairs: group.pairs.map(([a, b]) => [normalizeEndpoint(a), normalizeEndpoint(b)]),
     }));
 
     groups.forEach((group) => {
@@ -83,14 +110,14 @@
   }
 
   function getSatisfiedRequiredGroupCount(links, linkRules) {
-    const got = new Set(links.map(([a, b]) => normalizeLinkKey(a, b)));
+    const got = new Set(links.map(([a, b]) => normalizeLinkKey(normalizeEndpoint(a), normalizeEndpoint(b))));
     return linkRules.groups.filter(
       (group) => group.required && group.pairs.some(([a, b]) => got.has(normalizeLinkKey(a, b)))
     ).length;
   }
 
   function getMissingRequiredGroups(links, linkRules) {
-    const got = new Set(links.map(([a, b]) => normalizeLinkKey(a, b)));
+    const got = new Set(links.map(([a, b]) => normalizeLinkKey(normalizeEndpoint(a), normalizeEndpoint(b))));
     return linkRules.groups.filter(
       (group) => group.required && !group.pairs.some(([a, b]) => got.has(normalizeLinkKey(a, b)))
     );
@@ -98,15 +125,15 @@
 
   function getLinkIssue(a, b, linkRules, links) {
     const currentLinks = Array.isArray(links) ? links : [];
-    const pairKey = normalizeLinkKey(a, b);
+    const pairKey = normalizeLinkKey(normalizeEndpoint(a), normalizeEndpoint(b));
     const peersA = collectPeers(a, currentLinks);
     const peersB = collectPeers(b, currentLinks);
 
-    if (peersA.length > 1) {
+    if (!isEndpointShared(a) && peersA.length > 1) {
       return `${formatEndpointLabel(a)} 当前同时连接 ${formatEndpointList(peersA)}，一个端口只能保留一条连线。`;
     }
 
-    if (peersB.length > 1) {
+    if (!isEndpointShared(b) && peersB.length > 1) {
       return `${formatEndpointLabel(b)} 当前同时连接 ${formatEndpointList(peersB)}，一个端口只能保留一条连线。`;
     }
 
@@ -114,8 +141,8 @@
       return null;
     }
 
-    const expectedA = Array.from(linkRules.allowedPeers[a] || []);
-    const expectedB = Array.from(linkRules.allowedPeers[b] || []);
+    const expectedA = Array.from(linkRules.allowedPeers[normalizeEndpoint(a)] || []);
+    const expectedB = Array.from(linkRules.allowedPeers[normalizeEndpoint(b)] || []);
 
     if (expectedA.length) {
       return `${formatEndpointLabel(a)} 可连接 ${formatEndpointList(expectedA)}，不应连接 ${formatEndpointLabel(b)}。`;
@@ -130,11 +157,13 @@
 
   return {
     normalizeLinkKey,
+    normalizeEndpoint,
     removeLinkByKey,
     formatEndpointLabel,
     buildLinkRules,
     getSatisfiedRequiredGroupCount,
     getMissingRequiredGroups,
     getLinkIssue,
+    isEndpointShared,
   };
 });
