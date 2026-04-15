@@ -12,7 +12,6 @@
   <div><strong>无线网络虚拟实验室 学生端</strong><div class="small" style="color:#d2deef">拓扑连线 | 参数配置 | 网络测试</div></div>
   <div class="toolbar">
     <button class="tool" id="connectBtn">连接服务器</button>
-    <button class="tool" id="submitResultBtn">提交当前结果</button>
     <button class="tool" id="themeBtn">切换深色</button>
   </div>
 </header>
@@ -24,10 +23,6 @@
     <input id="role" value="student" hidden>
     <div class="field"><label>客户端ID</label><input id="clientId"></div>
     <div class="res" id="connState">未连接服务器。</div>
-    <div class="ttl" style="margin-top:14px">学生信息</div>
-    <div class="field"><label>班级</label><input id="className"></div>
-    <div class="field"><label>小组</label><input id="groupName"></div>
-    <div class="field"><label>记录员</label><input id="studentName"></div>
     <div class="ttl" style="margin-top:14px">设备</div>
     <div id="deviceList"></div>
   </aside>
@@ -64,6 +59,15 @@
       <div class="res" id="testResult">等待终端接入。</div>
       <div class="res" id="submitResult">尚未提交到教师台。</div>
       <table class="table"><tbody id="testTable"><tr><td>连接目标SSID</td><td>待测试</td></tr><tr><td>获取IP地址</td><td>待测试</td></tr><tr><td>DNS 解析</td><td>待测试</td></tr><tr><td>访问互联网</td><td>待测试</td></tr></tbody></table>
+      <div class="studentInfoSection">
+        <div class="ttl">学生信息</div>
+        <div class="field"><label>班级</label><input id="className"></div>
+        <div class="field"><label>小组</label><input id="groupName"></div>
+        <div class="field"><label>记录员</label><input id="studentName"></div>
+        <div class="studentInfoActions">
+          <button class="tool" id="submitResultBtn">提交当前结果</button>
+        </div>
+      </div>
     </div>
   </aside>
 </div>
