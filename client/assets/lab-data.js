@@ -7,18 +7,19 @@
     root.LabData = api;
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  const assetVersion = '20260415a';
   const photos = {
-    pc: '/client/assets/devices/pc.svg',
-    router: '/client/assets/devices/router.svg',
-    modem: '/client/assets/devices/modem.svg',
-    splitter: '/client/assets/devices/splitter.svg',
-    tablet: '/client/assets/devices/tablet.svg',
+    pc: `/client/assets/devices/pc.svg?v=${assetVersion}`,
+    router: `/client/assets/devices/router.svg?v=${assetVersion}`,
+    modem: `/client/assets/devices/modem.svg?v=${assetVersion}`,
+    splitter: `/client/assets/devices/splitter.svg?v=${assetVersion}`,
+    tablet: `/client/assets/devices/tablet.svg?v=${assetVersion}`,
   };
 
   const deviceBlueprints = [
     { id: 'pc', name: '电脑', type: '终端', x: 90, y: 120, ports: ['NIC'] },
     { id: 'router', name: '无线路由器', type: '核心设备', x: 320, y: 250, ports: ['WAN', 'LAN1', 'LAN2', 'WLAN'] },
-    { id: 'modem', name: 'ADSL Modem', type: '接入设备', x: 620, y: 120, ports: ['LAN1', 'LAN2', 'LAN4', 'ITV', '光口'] },
+    { id: 'modem', name: '光猫', type: '接入设备', x: 620, y: 120, ports: ['LAN1', 'LAN2', 'LAN4', 'ITV', '光口'] },
     { id: 'splitter', name: '分光器', type: '光纤接入', x: 900, y: 120, ports: ['PON'] },
     { id: 'tablet', name: '学生平板', type: '无线终端', x: 600, y: 430, ports: ['WiFi'] },
   ];

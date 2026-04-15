@@ -1,8 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 120">
-  <rect width="160" height="120" rx="18" fill="#eef5ff"/>
-  <rect x="42" y="14" width="76" height="92" rx="12" fill="#203047"/>
-  <rect x="50" y="24" width="60" height="66" rx="8" fill="#64a8ff"/>
-  <rect x="70" y="96" width="20" height="4" rx="2" fill="#eaf1fb"/>
-  <path d="M28 40c8-8 18-12 30-12" fill="none" stroke="#4bc27f" stroke-width="6" stroke-linecap="round"/>
-  <path d="M20 28c10-10 24-16 40-16" fill="none" stroke="#4bc27f" stroke-width="5" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="tabletBg" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#f9fcff"/>
+      <stop offset="1" stop-color="#e6f0ff"/>
+    </linearGradient>
+    <linearGradient id="tabletScreen" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#8fc3ff"/>
+      <stop offset="1" stop-color="#5b7df0"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="120" rx="18" fill="url(#tabletBg)"/>
+  <rect x="44" y="14" width="72" height="92" rx="14" fill="#203047"/>
+  <rect x="50" y="22" width="60" height="72" rx="10" fill="url(#tabletScreen)"/>
+  <path d="M60 72c12-16 22-22 40-28" fill="none" stroke="rgba(255,255,255,.34)" stroke-width="6" stroke-linecap="round"/>
+  <rect x="72" y="98" width="16" height="4" rx="2" fill="#eaf1fb"/>
+  <path d="M24 44c8-8 18-12 28-12" fill="none" stroke="#4bc27f" stroke-width="6" stroke-linecap="round"/>
+  <path d="M18 30c10-10 24-16 40-16" fill="none" stroke="#72d99b" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="58" cy="18" r="3" fill="#dff1ff"/>
 </svg>

@@ -176,7 +176,7 @@ function renderDeviceList() {
     button.className = `box deviceItem${placed ? ' placed' : ''}`;
     button.draggable = !placed;
     button.setAttribute('aria-pressed', String(placed));
-    button.innerHTML = `<div style="font-weight:700">${device.name}</div><div class="small">${device.type}</div><div class="small">${placed ? '已在连接区' : '拖到右侧连接区'}</div>`;
+    button.innerHTML = `<div class="deviceThumb"><img src="${photos[device.id]}" alt="${device.name}"><span class="deviceThumbFallback">${device.name}</span></div><div class="deviceItemBody"><div class="deviceItemName">${device.name}</div><div class="small">${device.type}</div><div class="small">${placed ? '已在连接区' : '拖到右侧连接区'}</div></div>`;
     button.ondragstart = (event) => {
       if (placed) return;
       state.paletteDragId = device.id;
@@ -190,6 +190,9 @@ function renderDeviceList() {
       workspace.classList.remove('drag-over');
       clearRecycleHighlight();
     };
+    const img = button.querySelector('img');
+    const fallback = button.querySelector('.deviceThumbFallback');
+    img.onerror = () => { img.style.display = 'none'; fallback.style.display = 'grid'; };
     host.appendChild(button);
   });
 }
@@ -252,7 +255,7 @@ function renderWorkspace() {
     node.dataset.id = device.id;
     node.style.left = `${device.x}px`;
     node.style.top = `${device.y}px`;
-    node.innerHTML = `<div class="led ${state.links.some((link) => link[0].startsWith(`${device.id}:`) || link[1].startsWith(`${device.id}:`)) ? 'on' : ''}"></div><div class="nodeHead"><div><div class="iconWrap"><img src="${photos[device.id]}" alt="${device.name}"><div class="iconFallback">${device.name}</div></div><div class="imgTag">${device.name}</div></div><div><div style="font-weight:700">${device.name}</div><div class="meta">${device.type}</div></div></div><div class="ports"></div><div class="dragHandle">拖动设备位置</div><div class="linkHint">提示：点击已连线端口、或悬停后点连线本身，都可删除；错误连线会立即标红</div>`;
+    node.innerHTML = `<div class="led ${state.links.some((link) => link[0].startsWith(`${device.id}:`) || link[1].startsWith(`${device.id}:`)) ? 'on' : ''}"></div><div class="nodeHead"><div><div class="iconWrap"><img src="${photos[device.id]}" alt="${device.name}"><div class="iconFallback">${device.name}</div></div><div class="imgTag">${device.name}</div></div><div class="nodeTitleWrap"><div class="nodeTitle">${device.name}</div><div class="meta">${device.type}</div></div></div><div class="ports"></div><div class="dragHandle">拖动设备位置</div><div class="linkHint">提示：点击已连线端口、或悬停后点连线本身，都可删除；错误连线会立即标红</div>`;
     const img = node.querySelector('img');
     const fallback = node.querySelector('.iconFallback');
     img.onerror = () => { img.style.display = 'none'; fallback.style.display = 'block'; };
